@@ -1,545 +1,886 @@
 /**
- * OrdemCompra Components Manager - Gerenciador de componentes da interface
- * Funcionalidades: Modal, Table, Pagination, Form validation
+ * OrdemCompraComponentsManager - Gerenciador de Componentes UI
+ * Responsável por gerenciar todos os elementos de interface da página
+ * Inclui modais, tabelas, formulários e interações do usuário
  */
-
-import apiManager from './ApiManager.js';
-import notificationManager from './NotificationManager.js';
-
 class OrdemCompraComponentsManager {
     constructor() {
-        this.currentPage = 0;
-        this.pageSize = 10;
-        this.totalPages = 0;
-        this.selectedOrders = new Set();
-        this.isLoading = false;
+        this.elements = {};
+        this.currentSort = { field: null, direction: 'asc' };
+        this.selectedItems = new Set();
+        this.currentPage = 1;
+        this.itemsPerPage = 10;
+        this.totalItems = 0;
         
-        this.init();
-    }
-
-    init() {
-        this.bindEvents();
-        this.loadInitialData();
-        this.initializeAnimations();
+        this.initializeElements();
+        this.setupEventListeners();
+        this.initializeFeatherIcons();
     }
 
     /**
-     * Bind event listeners
+     * Inicializa referências aos elementos DOM
      */
-    bindEvents() {
-        // Modal events
-        this.bindModalEvents();
-        
-        // Table events
-        this.bindTableEvents();
-        
-        // Pagination events
-        this.bindPaginationEvents();
-        
-        // Form events
-        this.bindFormEvents();
-        
-        // Action buttons
-        this.bindActionButtons();
+    initializeElements() {
+        this.elements = {
+            // Toolbar
+            btnNovaOrdem: document.getElementById('btnNovaOrdem'),
+            btnImportarXML: document.getElementById('btnImportarXML'),
+            btnRemoverSelecionados: document.getElementById('btnRemoverSelecionados'),
+            
+            // Tabela
+            tableBody: document.getElementById('ordemCompraTableBody'),
+            selectAll: document.getElementById('selectAll'),
+            
+            // Paginação
+            itemsPerPageSelect: document.getElementById('itemsPerPage'),
+            prevPageBtn: document.getElementById('prevPage'),
+            nextPageBtn: document.getElementById('nextPage'),
+            paginationCurrent: document.querySelector('.pagination-current'),
+            
+            // Modal
+            modalOrdemCompra: document.getElementById('modalOrdemCompra'),
+            modalTitle: document.getElementById('modalTitle'),
+            formOrdemCompra: document.getElementById('formOrdemCompra'),
+            btnCloseModal: document.getElementById('btnCloseModal'),
+            btnCancelModal: document.getElementById('btnCancelModal'),
+            
+            // Campos do formulário
+            inputId: document.getElementById('id'),
+            inputStatusOrdemCompra: document.getElementById('statusOrdemCompra'),
+            inputValor: document.getElementById('valor'),
+            inputDataPrev: document.getElementById('dataPrev'),
+            inputDataOrdem: document.getElementById('dataOrdem'),
+            inputDataEntre: document.getElementById('dataEntre')
+        };
+
+        // Verificar se todos os elementos foram encontrados
+        this.validateElements();
     }
 
     /**
-     * Modal event bindings
+     * Valida se todos os elementos críticos foram encontrados
      */
-    bindModalEvents() {
-        const modal = document.getElementById('orderModal');
-        const overlay = document.getElementById('modalOverlay');
-        const closeBtn = document.getElementById('closeModal');
-        const cancelBtn = document.getElementById('cancelOrder');
+    validateElements() {
+        const criticalElements = [
+            'tableBody', 'modalOrdemCompra', 'formOrdemCompra'
+        ];
 
+        for (const elementKey of criticalElements) {
+            if (!this.elements[elementKey]) {
+                console.error(`[ComponentsManager] Elemento crítico não encontrado: ${elementKey}`);
+            }
+        }
+    }
+
+    /**
+     * Configura todos os event listeners
+     */
+    setupEventListeners() {
+        this.setupToolbarListeners();
+        this.setupTableListeners();
+        this.setupModalListeners();
+        this.setupPaginationListeners();
+        this.setupFormListeners();
+        this.setupKeyboardListeners();
+    }
+
+    /**
+     * Configura listeners da toolbar
+     */
+    setupToolbarListeners() {
+        // Nova ordem de compra
+        if (this.elements.btnNovaOrdem) {
+            this.elements.btnNovaOrdem.addEventListener('click', () => {
+                this.openModal('create');
+            });
+        }
+
+        // Importar XML (placeholder)
+        if (this.elements.btnImportarXML) {
+            this.elements.btnImportarXML.addEventListener('click', () => {
+                notify.info('Funcionalidade de importação XML em desenvolvimento');
+            });
+        }
+
+        // Remover selecionados
+        if (this.elements.btnRemoverSelecionados) {
+            this.elements.btnRemoverSelecionados.addEventListener('click', () => {
+                this.handleBulkDelete();
+            });
+        }
+    }
+
+    /**
+     * Configura listeners da tabela
+     */
+    setupTableListeners() {
+        // Select all checkbox
+        if (this.elements.selectAll) {
+            this.elements.selectAll.addEventListener('change', (e) => {
+                this.handleSelectAll(e.target.checked);
+            });
+        }
+
+        // Sortable headers
+        const sortableHeaders = document.querySelectorAll('.sortable');
+        sortableHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const field = header.getAttribute('data-sort');
+                this.handleSort(field);
+            });
+        });
+    }
+
+    /**
+     * Configura listeners do modal
+     */
+    setupModalListeners() {
         // Fechar modal
-        [overlay, closeBtn, cancelBtn].forEach(element => {
-            if (element) {
-                element.addEventListener('click', (e) => {
-                    if (e.target === element) {
-                        this.closeModal();
-                    }
+        [this.elements.btnCloseModal, this.elements.btnCancelModal].forEach(btn => {
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    this.closeModal();
                 });
             }
         });
 
-        // ESC para fechar
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && modal && modal.classList.contains('show')) {
-                this.closeModal();
-            }
-        });
-    }
-
-    /**
-     * Table event bindings
-     */
-    bindTableEvents() {
-        const selectAllCheckbox = document.getElementById('selectAll');
-        
-        if (selectAllCheckbox) {
-            selectAllCheckbox.addEventListener('change', (e) => {
-                this.handleSelectAll(e.target.checked);
+        // Fechar modal clicando no overlay
+        if (this.elements.modalOrdemCompra) {
+            this.elements.modalOrdemCompra.addEventListener('click', (e) => {
+                if (e.target === this.elements.modalOrdemCompra) {
+                    this.closeModal();
+                }
             });
         }
     }
 
     /**
-     * Pagination event bindings
+     * Configura listeners da paginação
      */
-    bindPaginationEvents() {
-        // Previous/Next buttons
-        const prevBtn = document.getElementById('prevPage');
-        const nextBtn = document.getElementById('nextPage');
-        const pageSizeSelect = document.getElementById('pageSize');
-
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => this.goToPreviousPage());
+    setupPaginationListeners() {
+        // Items per page
+        if (this.elements.itemsPerPageSelect) {
+            this.elements.itemsPerPageSelect.addEventListener('change', (e) => {
+                this.itemsPerPage = parseInt(e.target.value);
+                this.currentPage = 1;
+                this.dispatchEvent('pagination:change');
+            });
         }
 
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => this.goToNextPage());
+        // Previous page
+        if (this.elements.prevPageBtn) {
+            this.elements.prevPageBtn.addEventListener('click', () => {
+                if (this.currentPage > 1) {
+                    this.currentPage--;
+                    this.dispatchEvent('pagination:change');
+                }
+            });
         }
 
-        if (pageSizeSelect) {
-            pageSizeSelect.addEventListener('change', (e) => {
-                this.changePageSize(parseInt(e.target.value));
+        // Next page
+        if (this.elements.nextPageBtn) {
+            this.elements.nextPageBtn.addEventListener('click', () => {
+                const totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
+                if (this.currentPage < totalPages) {
+                    this.currentPage++;
+                    this.dispatchEvent('pagination:change');
+                }
             });
         }
     }
 
     /**
-     * Form event bindings
+     * Configura listeners do formulário
      */
-    bindFormEvents() {
-        const orderForm = document.getElementById('orderForm');
-        const addProductBtn = document.getElementById('addProduct');
-        const saveOrderBtn = document.getElementById('saveOrder');
-
-        if (orderForm) {
-            orderForm.addEventListener('submit', (e) => {
+    setupFormListeners() {
+        if (this.elements.formOrdemCompra) {
+            this.elements.formOrdemCompra.addEventListener('submit', (e) => {
                 e.preventDefault();
                 this.handleFormSubmit();
             });
         }
 
-        if (addProductBtn) {
-            addProductBtn.addEventListener('click', () => {
-                this.addProductRow();
-            });
+        // Formatação de valor monetário (removido - deixar campo number normal)
+        // if (this.elements.inputValor) {
+        //     this.elements.inputValor.addEventListener('input', (e) => {
+        //         this.formatCurrencyInput(e.target);
+        //     });
+        // }
+    }
+
+    /**
+     * Configura listeners de teclado
+     */
+    setupKeyboardListeners() {
+        document.addEventListener('keydown', (e) => {
+            // ESC para fechar modal
+            if (e.key === 'Escape' && this.isModalOpen()) {
+                this.closeModal();
+            }
+            
+            // Ctrl+N para nova ordem
+            if (e.ctrlKey && e.key === 'n') {
+                e.preventDefault();
+                this.openModal('create');
+            }
+            
+            // Delete para remover selecionados
+            if (e.key === 'Delete' && this.selectedItems.size > 0 && !this.isModalOpen()) {
+                this.handleBulkDelete();
+            }
+        });
+    }
+
+    /**
+     * Inicializa os ícones Feather
+     */
+    initializeFeatherIcons() {
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    }
+
+    // ============================================
+    // MÉTODOS DA TABELA
+    // ============================================
+
+    /**
+     * Renderiza os dados na tabela
+     * @param {Array} ordensCompra - Array com ordens de compra
+     */
+    renderTable(ordensCompra) {
+        if (!this.elements.tableBody) {
+            console.error('[ComponentsManager] Elemento tableBody não encontrado');
+            return;
         }
 
-        if (saveOrderBtn) {
-            saveOrderBtn.addEventListener('click', () => {
-                this.handleFormSubmit();
-            });
+        if (!ordensCompra || ordensCompra.length === 0) {
+            this.renderEmptyState();
+            return;
+        }
+
+        const tbody = this.elements.tableBody;
+        tbody.innerHTML = '';
+
+        ordensCompra.forEach(ordem => {
+            const row = this.createTableRow(ordem);
+            tbody.appendChild(row);
+        });
+
+        // Atualizar seleções
+        this.updateSelectionState();
+        
+        // Reinicializar ícones
+        this.initializeFeatherIcons();
+    }
+
+    /**
+     * Cria uma linha da tabela
+     * @param {Object} ordem - Dados da ordem de compra
+     * @returns {HTMLElement} - Elemento tr
+     */
+    createTableRow(ordem) {
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-id', ordem.id);
+
+        // Checkbox
+        const isSelected = this.selectedItems.has(ordem.id);
+        
+        // Status badge
+        const statusClass = this.getStatusClass(ordem.statusOrdemCompra);
+        const statusText = this.getStatusText(ordem.statusOrdemCompra);
+
+        // Formatar valores
+        const valorFormatado = this.formatCurrency(ordem.valor);
+        const dataPrevFormatada = this.formatDate(ordem.dataPrev);
+        const dataOrdemFormatada = this.formatDate(ordem.dataOrdem);
+        const dataEntreFormatada = ordem.dataEntre ? this.formatDate(ordem.dataEntre) : '-';
+
+        tr.innerHTML = `
+            <td class="checkbox-column">
+                <input type="checkbox" ${isSelected ? 'checked' : ''} 
+                       onchange="componentsManager.handleRowSelection(${ordem.id}, this.checked)">
+            </td>
+            <td>${ordem.id}</td>
+            <td>${dataOrdemFormatada}</td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+            <td>${valorFormatado}</td>
+            <td>-</td>
+            <td class="actions">
+                <button class="action-btn action-view" onclick="componentsManager.viewOrdem(${ordem.id})" 
+                        title="Visualizar">
+                    <i data-feather="eye"></i>
+                </button>
+                <button class="action-btn action-edit" onclick="componentsManager.editOrdem(${ordem.id})" 
+                        title="Editar">
+                    <i data-feather="edit-2"></i>
+                </button>
+                <button class="action-btn action-delete" onclick="componentsManager.deleteOrdem(${ordem.id})" 
+                        title="Excluir">
+                    <i data-feather="trash-2"></i>
+                </button>
+            </td>
+        `;
+
+        return tr;
+    }
+
+    /**
+     * Renderiza estado vazio
+     */
+    renderEmptyState() {
+        const tbody = this.elements.tableBody;
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center">
+                    <div class="empty-state">
+                        <i data-feather="inbox" style="font-size: 48px; opacity: 0.5;"></i>
+                        <h3>Nenhuma ordem de compra encontrada</h3>
+                        <p>Clique em "Nova Ordem de Compra" para começar</p>
+                        <button class="btn btn-primary" onclick="componentsManager.openModal('create')">
+                            <i data-feather="plus"></i>
+                            Nova Ordem de Compra
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        this.initializeFeatherIcons();
+    }
+
+    // ============================================
+    // MÉTODOS DE SELEÇÃO
+    // ============================================
+
+    /**
+     * Manipula seleção de linha individual
+     * @param {number} id - ID da ordem
+     * @param {boolean} selected - Se está selecionado
+     */
+    handleRowSelection(id, selected) {
+        if (selected) {
+            this.selectedItems.add(id);
+        } else {
+            this.selectedItems.delete(id);
+        }
+        
+        this.updateSelectionState();
+        this.updateBulkActions();
+    }
+
+    /**
+     * Manipula seleção de todos os itens
+     * @param {boolean} selectAll - Se deve selecionar todos
+     */
+    handleSelectAll(selectAll) {
+        const checkboxes = this.elements.tableBody.querySelectorAll('input[type="checkbox"]');
+        
+        checkboxes.forEach(checkbox => {
+            const row = checkbox.closest('tr');
+            const id = parseInt(row.getAttribute('data-id'));
+            
+            checkbox.checked = selectAll;
+            
+            if (selectAll) {
+                this.selectedItems.add(id);
+            } else {
+                this.selectedItems.delete(id);
+            }
+        });
+        
+        this.updateBulkActions();
+    }
+
+    /**
+     * Atualiza estado da seleção
+     */
+    updateSelectionState() {
+        if (!this.elements.selectAll) return;
+
+        const checkboxes = this.elements.tableBody.querySelectorAll('input[type="checkbox"]');
+        const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
+        
+        if (checkedBoxes.length === 0) {
+            this.elements.selectAll.checked = false;
+            this.elements.selectAll.indeterminate = false;
+        } else if (checkedBoxes.length === checkboxes.length) {
+            this.elements.selectAll.checked = true;
+            this.elements.selectAll.indeterminate = false;
+        } else {
+            this.elements.selectAll.checked = false;
+            this.elements.selectAll.indeterminate = true;
         }
     }
 
     /**
-     * Action button bindings
+     * Atualiza visibilidade das ações em massa
      */
-    bindActionButtons() {
-        const newOrderBtn = document.getElementById('newOrder');
-        const deleteSelectedBtn = document.getElementById('deleteSelected');
-
-        if (newOrderBtn) {
-            newOrderBtn.addEventListener('click', () => {
-                this.openModal();
-            });
-        }
-
-        if (deleteSelectedBtn) {
-            deleteSelectedBtn.addEventListener('click', () => {
-                this.deleteSelectedOrders();
-            });
+    updateBulkActions() {
+        if (this.elements.btnRemoverSelecionados) {
+            const hasSelection = this.selectedItems.size > 0;
+            this.elements.btnRemoverSelecionados.disabled = !hasSelection;
+            
+            if (hasSelection) {
+                this.elements.btnRemoverSelecionados.textContent = 
+                    `Remover selecionados (${this.selectedItems.size})`;
+            } else {
+                this.elements.btnRemoverSelecionados.innerHTML = `
+                    <i data-feather="trash-2"></i>
+                    Remover selecionados
+                `;
+                this.initializeFeatherIcons();
+            }
         }
     }
 
+    // ============================================
+    // MÉTODOS DO MODAL
+    // ============================================
+
     /**
-     * Initialize animations
+     * Abre o modal para criar ou editar
+     * @param {string} mode - 'create' ou 'edit'
+     * @param {Object} data - Dados para edição
      */
-    initializeAnimations() {
-        // Animar elementos quando carregarem
+    openModal(mode = 'create', data = null) {
+        if (!this.elements.modalOrdemCompra) return;
+
+        this.clearForm();
+        
+        if (mode === 'create') {
+            this.elements.modalTitle.textContent = 'Cadastro de Ordem de Compra';
+            this.setDefaultDates();
+        } else {
+            this.elements.modalTitle.textContent = 'Editar Ordem de Compra';
+            if (data) {
+                this.populateForm(data);
+            }
+        }
+
+        this.elements.modalOrdemCompra.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        
+        // Focar no primeiro campo
         setTimeout(() => {
-            const actionBar = document.querySelector('.action-bar');
-            const tableContainer = document.querySelector('.table-container');
-            const paginationContainer = document.querySelector('.pagination-container');
-
-            if (actionBar) actionBar.classList.add('animate-in');
-            if (tableContainer) tableContainer.classList.add('animate-in');
-            if (paginationContainer) paginationContainer.classList.add('animate-in');
+            const firstInput = this.elements.formOrdemCompra.querySelector('input, select');
+            if (firstInput) {
+                firstInput.focus();
+            }
         }, 100);
     }
 
     /**
-     * Load initial data
+     * Fecha o modal
      */
-    async loadInitialData() {
-        await this.loadOrders();
+    closeModal() {
+        if (!this.elements.modalOrdemCompra) return;
+
+        this.elements.modalOrdemCompra.classList.remove('active');
+        document.body.style.overflow = '';
+        this.clearForm();
     }
 
     /**
-     * Load orders with pagination
+     * Verifica se o modal está aberto
+     * @returns {boolean}
      */
-    async loadOrders() {
-        if (this.isLoading) return;
+    isModalOpen() {
+        return this.elements.modalOrdemCompra && 
+               this.elements.modalOrdemCompra.classList.contains('active');
+    }
 
-        this.isLoading = true;
-        this.showLoadingState();
+    // ============================================
+    // MÉTODOS DO FORMULÁRIO
+    // ============================================
 
-        try {
-            const response = await apiManager.getOrdensCompra(this.currentPage, this.pageSize);
-            this.renderTable(response.content);
-            this.updatePagination(response);
-            this.selectedOrders.clear();
-            this.updateActionButtons();
-        } catch (error) {
-            console.error('Erro ao carregar ordens:', error);
-            notificationManager.error('Erro ao carregar ordens de compra');
-        } finally {
-            this.isLoading = false;
-            this.hideLoadingState();
+    /**
+     * Limpa o formulário
+     */
+    clearForm() {
+        if (!this.elements.formOrdemCompra) return;
+
+        this.elements.formOrdemCompra.reset();
+        this.elements.inputId.value = '';
+        
+        // Remover classes de validação
+        const inputs = this.elements.formOrdemCompra.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.classList.remove('is-valid', 'is-invalid');
+        });
+    }
+
+    /**
+     * Popula o formulário com dados
+     * @param {Object} data - Dados da ordem
+     */
+    populateForm(data) {
+        if (!data) return;
+
+        this.elements.inputId.value = data.id || '';
+        this.elements.inputStatusOrdemCompra.value = data.statusOrdemCompra || '';
+        this.elements.inputValor.value = data.valor || '';
+        this.elements.inputDataPrev.value = data.dataPrev || '';
+        this.elements.inputDataOrdem.value = data.dataOrdem || '';
+        this.elements.inputDataEntre.value = data.dataEntre || '';
+    }
+
+    /**
+     * Define datas padrão para nova ordem
+     */
+    setDefaultDates() {
+        const today = new Date().toISOString().split('T')[0];
+        this.elements.inputDataOrdem.value = today;
+        
+        // Data prevista para 30 dias a partir de hoje
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 30);
+        this.elements.inputDataPrev.value = futureDate.toISOString().split('T')[0];
+    }
+
+    /**
+     * Manipula submissão do formulário
+     */
+    handleFormSubmit() {
+        const formData = this.getFormData();
+        const isEdit = !!formData.id;
+        
+        if (this.validateForm(formData)) {
+            this.dispatchEvent('form:submit', { data: formData, isEdit });
         }
     }
 
     /**
-     * Render table with data
+     * Obtém dados do formulário
+     * @returns {Object} - Dados do formulário
      */
-    renderTable(orders) {
-        const tbody = document.querySelector('#ordersTable tbody');
-        if (!tbody) return;
+    getFormData() {
+        return {
+            id: this.elements.inputId.value || null,
+            statusOrdemCompra: this.elements.inputStatusOrdemCompra.value,
+            valor: parseFloat(this.elements.inputValor.value) || 0,
+            dataPrev: this.elements.inputDataPrev.value,
+            dataOrdem: this.elements.inputDataOrdem.value,
+            dataEntre: this.elements.inputDataEntre.value || null
+        };
+    }
 
-        tbody.innerHTML = '';
+    /**
+     * Valida o formulário
+     * @param {Object} data - Dados a serem validados
+     * @returns {boolean} - Se é válido
+     */
+    validateForm(data) {
+        let isValid = true;
+        const errors = [];
 
-        if (orders.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px; color: #666;">
-                        <i data-feather="inbox" style="width: 48px; height: 48px; margin-bottom: 10px;"></i>
-                        <div>Nenhuma ordem de compra encontrada</div>
-                    </td>
-                </tr>
-            `;
-            feather.replace();
+        // Validar status
+        if (!data.statusOrdemCompra) {
+            errors.push('Status da ordem é obrigatório');
+            this.markFieldInvalid(this.elements.inputStatusOrdemCompra);
+            isValid = false;
+        }
+
+        // Validar valor
+        if (!data.valor || data.valor <= 0) {
+            errors.push('Valor deve ser maior que zero');
+            this.markFieldInvalid(this.elements.inputValor);
+            isValid = false;
+        }
+
+        // Validar datas
+        if (!data.dataPrev) {
+            errors.push('Data prevista é obrigatória');
+            this.markFieldInvalid(this.elements.inputDataPrev);
+            isValid = false;
+        }
+
+        if (!data.dataOrdem) {
+            errors.push('Data da ordem é obrigatória');
+            this.markFieldInvalid(this.elements.inputDataOrdem);
+            isValid = false;
+        }
+
+        // Mostrar erros se houver
+        if (errors.length > 0) {
+            notify.error(`Erro na validação: ${errors.join(', ')}`);
+        }
+
+        return isValid;
+    }
+
+    /**
+     * Marca campo como inválido
+     * @param {HTMLElement} field - Campo a ser marcado
+     */
+    markFieldInvalid(field) {
+        if (field) {
+            field.classList.add('is-invalid');
+            field.classList.remove('is-valid');
+        }
+    }
+
+    /**
+     * Marca campo como válido
+     * @param {HTMLElement} field - Campo a ser marcado
+     */
+    markFieldValid(field) {
+        if (field) {
+            field.classList.add('is-valid');
+            field.classList.remove('is-invalid');
+        }
+    }
+
+    // ============================================
+    // MÉTODOS DE AÇÃO
+    // ============================================
+
+    /**
+     * Visualiza uma ordem
+     * @param {number} id - ID da ordem
+     */
+    viewOrdem(id) {
+        this.dispatchEvent('ordem:view', { id });
+    }
+
+    /**
+     * Edita uma ordem
+     * @param {number} id - ID da ordem
+     */
+    editOrdem(id) {
+        this.dispatchEvent('ordem:edit', { id });
+    }
+
+    /**
+     * Exclui uma ordem
+     * @param {number} id - ID da ordem
+     */
+    deleteOrdem(id) {
+        if (confirm('Tem certeza que deseja excluir esta ordem de compra?')) {
+            this.dispatchEvent('ordem:delete', { id });
+        }
+    }
+
+    /**
+     * Manipula exclusão em massa
+     */
+    handleBulkDelete() {
+        if (this.selectedItems.size === 0) {
+            notify.warning('Nenhum item selecionado');
             return;
         }
 
-        orders.forEach(order => {
-            const row = this.createTableRow(order);
-            tbody.appendChild(row);
-        });
-
-        feather.replace();
+        const count = this.selectedItems.size;
+        const message = `Tem certeza que deseja excluir ${count} ordem(ns) de compra selecionada(s)?`;
+        
+        if (confirm(message)) {
+            const ids = Array.from(this.selectedItems);
+            this.dispatchEvent('ordem:bulkDelete', { ids });
+        }
     }
 
     /**
-     * Create table row
+     * Manipula ordenação
+     * @param {string} field - Campo para ordenar
      */
-    createTableRow(order) {
-        const row = document.createElement('tr');
-        row.className = 'table-row';
-        row.dataset.orderId = order.id;
+    handleSort(field) {
+        if (this.currentSort.field === field) {
+            this.currentSort.direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.currentSort.field = field;
+            this.currentSort.direction = 'asc';
+        }
 
-        const statusClass = this.getStatusClass(order.status);
-        const formattedValue = new Intl.NumberFormat('pt-BR', {
+        this.updateSortIndicators();
+        this.dispatchEvent('table:sort', this.currentSort);
+    }
+
+    /**
+     * Atualiza indicadores de ordenação
+     */
+    updateSortIndicators() {
+        // Remover todas as classes de ordenação
+        document.querySelectorAll('.sortable').forEach(header => {
+            header.classList.remove('sorted', 'desc');
+        });
+
+        // Adicionar classe ao header atual
+        if (this.currentSort.field) {
+            const header = document.querySelector(`[data-sort="${this.currentSort.field}"]`);
+            if (header) {
+                header.classList.add('sorted');
+                if (this.currentSort.direction === 'desc') {
+                    header.classList.add('desc');
+                }
+            }
+        }
+    }
+
+    // ============================================
+    // MÉTODOS DE PAGINAÇÃO
+    // ============================================
+
+    /**
+     * Atualiza controles de paginação
+     * @param {number} totalItems - Total de itens
+     */
+    updatePagination(totalItems) {
+        this.totalItems = totalItems;
+        const totalPages = Math.ceil(totalItems / this.itemsPerPage);
+
+        // Atualizar página atual
+        if (this.elements.paginationCurrent) {
+            this.elements.paginationCurrent.textContent = this.currentPage;
+        }
+
+        // Atualizar botões
+        if (this.elements.prevPageBtn) {
+            this.elements.prevPageBtn.disabled = this.currentPage <= 1;
+        }
+
+        if (this.elements.nextPageBtn) {
+            this.elements.nextPageBtn.disabled = this.currentPage >= totalPages;
+        }
+    }
+
+    /**
+     * Obtém parâmetros de paginação
+     * @returns {Object} - Parâmetros de paginação
+     */
+    getPaginationParams() {
+        return {
+            page: this.currentPage,
+            size: this.itemsPerPage,
+            sort: this.currentSort.field ? 
+                  `${this.currentSort.field},${this.currentSort.direction}` : null
+        };
+    }
+
+    // ============================================
+    // MÉTODOS UTILITÁRIOS
+    // ============================================
+
+    /**
+     * Formata valor monetário
+     * @param {number} value - Valor a ser formatado
+     * @returns {string} - Valor formatado
+     */
+    formatCurrency(value) {
+        return new Intl.NumberFormat('pt-BR', {
             style: 'currency',
             currency: 'BRL'
-        }).format(order.valorTotal || 0);
-
-        row.innerHTML = `
-            <td class="checkbox-col">
-                <label class="checkbox">
-                    <input type="checkbox" onchange="componentsManager.handleRowSelect(${order.id}, this.checked)">
-                    <span class="checkmark"></span>
-                </label>
-            </td>
-            <td>${order.numero || 'N/A'}</td>
-            <td>${order.fornecedor || 'N/A'}</td>
-            <td>${this.formatDate(order.dataEmissao)}</td>
-            <td>${this.formatDate(order.dataPrevista)}</td>
-            <td><span class="status-badge status-${statusClass}">${order.status || 'PENDENTE'}</span></td>
-            <td style="text-align: right; font-weight: 600;">${formattedValue}</td>
-            <td>
-                <div class="action-buttons">
-                    <button class="btn-icon btn-edit" onclick="componentsManager.editOrder(${order.id})" title="Editar">
-                        <i data-feather="edit-2"></i>
-                    </button>
-                    <button class="btn-icon btn-delete" onclick="componentsManager.deleteOrder(${order.id})" title="Excluir">
-                        <i data-feather="trash-2"></i>
-                    </button>
-                </div>
-            </td>
-        `;
-
-        return row;
+        }).format(value || 0);
     }
 
     /**
-     * Update pagination
-     */
-    updatePagination(response) {
-        this.totalPages = response.totalPages;
-        
-        // Update pagination info
-        const startItem = (this.currentPage * this.pageSize) + 1;
-        const endItem = Math.min((this.currentPage + 1) * this.pageSize, response.totalElements);
-        
-        const paginationInfo = document.querySelector('.pagination-info');
-        if (paginationInfo) {
-            paginationInfo.innerHTML = `
-                Mostrando ${startItem} a ${endItem} de ${response.totalElements} registros
-            `;
-        }
-
-        // Update current page
-        const currentPageEl = document.querySelector('.pagination-current');
-        if (currentPageEl) {
-            currentPageEl.textContent = this.currentPage + 1;
-        }
-
-        // Update buttons
-        const prevBtn = document.getElementById('prevPage');
-        const nextBtn = document.getElementById('nextPage');
-        
-        if (prevBtn) {
-            prevBtn.disabled = response.first;
-        }
-        
-        if (nextBtn) {
-            nextBtn.disabled = response.last;
-        }
-    }
-
-    /**
-     * Modal methods
-     */
-    openModal(orderId = null) {
-        const overlay = document.getElementById('modalOverlay');
-        const modal = document.getElementById('orderModal');
-        
-        if (overlay && modal) {
-            overlay.classList.add('show');
-            document.body.style.overflow = 'hidden';
-            
-            if (orderId) {
-                this.loadOrderData(orderId);
-            } else {
-                this.resetForm();
-            }
-        }
-    }
-
-    closeModal() {
-        const overlay = document.getElementById('modalOverlay');
-        
-        if (overlay) {
-            overlay.classList.remove('show');
-            document.body.style.overflow = '';
-        }
-    }
-
-    /**
-     * Form methods
-     */
-    resetForm() {
-        const form = document.getElementById('orderForm');
-        if (form) {
-            form.reset();
-            
-            // Reset produto rows
-            const produtosSection = document.getElementById('produtosSection');
-            if (produtosSection) {
-                const firstRow = produtosSection.querySelector('.product-row');
-                if (firstRow) {
-                    firstRow.querySelectorAll('input, select').forEach(input => {
-                        input.value = '';
-                    });
-                }
-                
-                // Remove extra rows
-                const extraRows = produtosSection.querySelectorAll('.product-row:not(:first-child)');
-                extraRows.forEach(row => row.remove());
-            }
-        }
-    }
-
-    async handleFormSubmit() {
-        const formData = this.collectFormData();
-        
-        if (!this.validateForm(formData)) {
-            return;
-        }
-
-        const saveBtn = document.getElementById('saveOrder');
-        
-        try {
-            await apiManager.withLoading(saveBtn, async () => {
-                if (formData.id) {
-                    await apiManager.updateOrdemCompra(formData.id, formData);
-                    notificationManager.success('Ordem de compra atualizada com sucesso!');
-                } else {
-                    await apiManager.createOrdemCompra(formData);
-                    notificationManager.success('Ordem de compra criada com sucesso!');
-                }
-            });
-
-            this.closeModal();
-            await this.loadOrders();
-            
-        } catch (error) {
-            console.error('Erro ao salvar ordem:', error);
-            notificationManager.error('Erro ao salvar ordem de compra');
-        }
-    }
-
-    /**
-     * Utility methods
+     * Formata data
+     * @param {string} dateString - Data em string
+     * @returns {string} - Data formatada
      */
     formatDate(dateString) {
-        return new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR');
+        if (!dateString) return '-';
+        
+        const date = new Date(dateString + 'T00:00:00');
+        return date.toLocaleDateString('pt-BR');
     }
 
+    /**
+     * Formata input de moeda
+     * @param {HTMLElement} input - Input a ser formatado
+     */
+    formatCurrencyInput(input) {
+        let value = input.value.replace(/\D/g, '');
+        value = (value / 100).toFixed(2);
+        input.value = value;
+    }
+
+    /**
+     * Obtém classe CSS para status
+     * @param {string} status - Status da ordem
+     * @returns {string} - Classe CSS
+     */
     getStatusClass(status) {
-        const statusMap = {
-            'PENDENTE': 'warning',
-            'APROVADA': 'success',
-            'RECEBIDA': 'info',
-            'CANCELADA': 'danger'
+        const classes = {
+            'PEND': 'status-pend',
+            'ANDA': 'status-anda',
+            'CONC': 'status-conc'
         };
-        return statusMap[status] || 'secondary';
+        return classes[status] || 'status-pend';
     }
 
-    showLoadingState() {
-        const tbody = document.querySelector('#ordersTable tbody');
-        if (tbody) {
-            tbody.innerHTML = `
+    /**
+     * Obtém texto do status
+     * @param {string} status - Status da ordem
+     * @returns {string} - Texto do status
+     */
+    getStatusText(status) {
+        const texts = {
+            'PEND': 'Pendente',
+            'ANDA': 'Em Andamento',
+            'CONC': 'Concluído'
+        };
+        return texts[status] || 'Desconhecido';
+    }
+
+    /**
+     * Limpa seleções
+     */
+    clearSelections() {
+        this.selectedItems.clear();
+        this.updateSelectionState();
+        this.updateBulkActions();
+    }
+
+    /**
+     * Dispara evento customizado
+     * @param {string} eventName - Nome do evento
+     * @param {Object} detail - Dados do evento
+     */
+    dispatchEvent(eventName, detail = {}) {
+        const event = new CustomEvent(`ordemcompra:${eventName}`, { detail });
+        document.dispatchEvent(event);
+    }
+
+    /**
+     * Mostra loading na tabela
+     */
+    showTableLoading() {
+        if (this.elements.tableBody) {
+            this.elements.tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px;">
-                        <div class="loading"></div>
-                        <div style="margin-top: 10px; color: #666;">Carregando...</div>
+                    <td colspan="9" class="text-center">
+                        <div class="loading-state">
+                            <div class="spinner"></div>
+                            <p>Carregando ordens de compra...</p>
+                        </div>
                     </td>
                 </tr>
             `;
         }
     }
 
-    hideLoadingState() {
-        // Loading state will be replaced by actual data
-    }
-
-    // === MÉTODOS PÚBLICOS CHAMADOS PELOS EVENT HANDLERS ===
-
-    handleRowSelect(orderId, isSelected) {
-        if (isSelected) {
-            this.selectedOrders.add(orderId);
-        } else {
-            this.selectedOrders.delete(orderId);
-        }
-        this.updateActionButtons();
-    }
-
-    handleSelectAll(isSelected) {
-        const checkboxes = document.querySelectorAll('#ordersTable tbody input[type="checkbox"]');
-        checkboxes.forEach(cb => {
-            cb.checked = isSelected;
-            const orderId = parseInt(cb.closest('tr').dataset.orderId);
-            if (isSelected) {
-                this.selectedOrders.add(orderId);
+    /**
+     * Mostra loading no formulário
+     * @param {boolean} show - Se deve mostrar loading
+     */
+    showFormLoading(show = true) {
+        if (this.elements.formOrdemCompra) {
+            if (show) {
+                this.elements.formOrdemCompra.classList.add('loading');
             } else {
-                this.selectedOrders.delete(orderId);
-            }
-        });
-        this.updateActionButtons();
-    }
-
-    updateActionButtons() {
-        const deleteBtn = document.getElementById('deleteSelected');
-        if (deleteBtn) {
-            deleteBtn.disabled = this.selectedOrders.size === 0;
-        }
-    }
-
-    async editOrder(orderId) {
-        this.openModal(orderId);
-    }
-
-    async deleteOrder(orderId) {
-        if (confirm('Tem certeza que deseja excluir esta ordem de compra?')) {
-            try {
-                await apiManager.deleteOrdemCompra(orderId);
-                notificationManager.success('Ordem de compra excluída com sucesso!');
-                await this.loadOrders();
-            } catch (error) {
-                console.error('Erro ao excluir ordem:', error);
-                notificationManager.error('Erro ao excluir ordem de compra');
+                this.elements.formOrdemCompra.classList.remove('loading');
             }
         }
-    }
-
-    async deleteSelectedOrders() {
-        if (this.selectedOrders.size === 0) return;
-
-        const count = this.selectedOrders.size;
-        if (confirm(`Tem certeza que deseja excluir ${count} ordem(ns) de compra selecionada(s)?`)) {
-            try {
-                for (const orderId of this.selectedOrders) {
-                    await apiManager.deleteOrdemCompra(orderId);
-                }
-                
-                notificationManager.success(`${count} ordem(ns) excluída(s) com sucesso!`);
-                await this.loadOrders();
-            } catch (error) {
-                console.error('Erro ao excluir ordens:', error);
-                notificationManager.error('Erro ao excluir ordens de compra');
-            }
-        }
-    }
-
-    goToPreviousPage() {
-        if (this.currentPage > 0) {
-            this.currentPage--;
-            this.loadOrders();
-        }
-    }
-
-    goToNextPage() {
-        if (this.currentPage < this.totalPages - 1) {
-            this.currentPage++;
-            this.loadOrders();
-        }
-    }
-
-    changePageSize(newSize) {
-        this.pageSize = newSize;
-        this.currentPage = 0;
-        this.loadOrders();
-    }
-
-    // Placeholder methods (to be implemented)
-    collectFormData() {
-        // TODO: Implement form data collection
-        return {};
-    }
-
-    validateForm(formData) {
-        // TODO: Implement form validation
-        return true;
-    }
-
-    loadOrderData(orderId) {
-        // TODO: Implement order data loading for edit
-    }
-
-    addProductRow() {
-        // TODO: Implement add product row
     }
 }
 
-// Initialize global instance
+// Criar instância global
 const componentsManager = new OrdemCompraComponentsManager();
 
-// Make it globally accessible for onclick handlers
-window.componentsManager = componentsManager;
+// Exportar para uso em outros módulos
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = OrdemCompraComponentsManager;
+}
 
-export default componentsManager;
+console.log('[OrdemCompraComponentsManager] Inicializado com sucesso');

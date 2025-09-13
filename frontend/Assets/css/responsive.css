@@ -1,0 +1,215 @@
+/* ============================================
+   RESPONSIVE DESIGN - SISTEMA FASICLIN
+   ============================================ */
+
+/* MOBILE FIRST APPROACH */
+/* Base styles for mobile devices */
+@media (max-width: 480px) {
+  .container {
+    padding: 10px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+
+  .page-title {
+    font-size: var(--titulo-celular);
+  }
+
+  .toolbar {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .toolbar-left {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+    font-size: var(--fonte-celular);
+  }
+
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ordem-compra-table {
+    min-width: 800px;
+    font-size: var(--fonte-celular);
+  }
+
+  .ordem-compra-table th,
+  .ordem-compra-table td {
+    padding: 8px 4px;
+    white-space: nowrap;
+  }
+
+  .modal {
+    width: 95%;
+    max-height: 90vh;
+    margin: 5vh auto;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .form-group {
+    width: 100%;
+  }
+
+  .pagination-container {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+
+  .pagination-controls {
+    justify-content: center;
+  }
+}
+
+/* TABLET STYLES */
+@media (min-width: 481px) and (max-width: 768px) {
+  .container {
+    padding: 15px;
+  }
+
+  .page-title {
+    font-size: var(--titulo-tablet);
+  }
+
+  .btn {
+    font-size: var(--fonte-tablet);
+    padding: 10px 15px;
+  }
+
+  .toolbar-left {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .ordem-compra-table {
+    font-size: var(--fonte-tablet);
+  }
+
+  .ordem-compra-table th,
+  .ordem-compra-table td {
+    padding: 10px 8px;
+  }
+
+  .modal {
+    width: 85%;
+    max-width: 600px;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .form-group {
+    width: 100%;
+  }
+}
+
+/* DESKTOP STYLES */
+@media (min-width: 769px) {
+  .container {
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .page-title {
+    font-size: var(--titulo-pc);
+  }
+
+  .btn {
+    font-size: var(--fonte-pc);
+  }
+
+  .ordem-compra-table {
+    font-size: var(--fonte-pc);
+  }
+
+  .modal {
+    width: 70%;
+    max-width: 800px;
+  }
+
+  .form-row {
+    flex-direction: row;
+    gap: 20px;
+  }
+
+  .form-group {
+    flex: 1;
+  }
+}
+
+/* LARGE DESKTOP STYLES */
+@media (min-width: 1200px) {
+  .container {
+    padding: 30px;
+  }
+
+  .toolbar-left {
+    gap: 15px;
+  }
+
+  .btn {
+    padding: 12px 20px;
+  }
+
+  .ordem-compra-table th,
+  .ordem-compra-table td {
+    padding: 15px 12px;
+  }
+
+  .modal {
+    width: 60%;
+    max-width: 900px;
+  }
+}
+
+/* ACCESSIBILITY & PRINT STYLES */
+@media (prefers-reduced-motion: reduce) {
+  .modal,
+  .notification,
+  .btn {
+    transition: none;
+  }
+}
+
+@media print {
+  .toolbar,
+  .pagination-container,
+  .modal-overlay,
+  .header-info {
+    display: none !important;
+  }
+
+  .container {
+    padding: 0;
+  }
+
+  .ordem-compra-table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  .ordem-compra-table th,
+  .ordem-compra-table td {
+    border: 1px solid #000;
+    padding: 8px;
+    font-size: 12px;
+  }
+}

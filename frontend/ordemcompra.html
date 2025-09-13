@@ -1,219 +1,195 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Produtos / Ordens de Compra - Fasiclin</title>
-    
-    <!-- Styles -->
-    <link rel="stylesheet" href="Assets/css/global.css">
-    <link rel="stylesheet" href="Assets/css/ordem-compra.css">
-    
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistema Fasiclin - Ordens de Compra</title>
+    <link rel="shortcut icon" href="./Assets/icon/OrdemCompraIcone.ico" type="image/x-icon">
+    <link rel="stylesheet" href="./Assets/css/index.css" />
+    <link rel="stylesheet" href="./Assets/css/ordemcompra.css" />
+    <link rel="stylesheet" href="./Assets/css/responsive.css" />
+  </head>
+  <body>
+    <!-- Container Principal -->
+    <div class="container">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-content">
+          <h1 class="page-title">Ordens de Compra</h1>
+          <div class="header-info">
+            <i data-feather="help-circle"></i>
+          </div>
+        </div>
+      </header>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button class="btn btn-primary" id="btnNovaOrdem">
+            <i data-feather="plus"></i>
+            Nova Ordem de Compra
+          </button>
+          <button class="btn btn-secondary" id="btnImportarXML">
+            <i data-feather="upload"></i>
+            Importar XML
+          </button>
+          <button class="btn btn-danger" id="btnRemoverSelecionados">
+            <i data-feather="trash-2"></i>
+            Remover selecionados
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabela de Ordens de Compra -->
+      <div class="table-container">
+        <table class="ordem-compra-table">
+          <thead>
+            <tr>
+              <th class="checkbox-column">
+                <input type="checkbox" id="selectAll" />
+              </th>
+              <th class="sortable" data-sort="codigo">
+                Código
+                <i data-feather="chevron-up" class="sort-icon"></i>
+              </th>
+              <th class="sortable" data-sort="data">
+                Data
+                <i data-feather="chevron-up" class="sort-icon"></i>
+              </th>
+              <th class="sortable" data-sort="notaFiscal">
+                Nota Fiscal
+                <i data-feather="chevron-up" class="sort-icon"></i>
+              </th>
+              <th class="sortable" data-sort="fornecedor">
+                Fornecedor
+                <i data-feather="chevron-up" class="sort-icon"></i>
+              </th>
+              <th class="sortable" data-sort="desconto">
+                Desconto R$
+                <i data-feather="chevron-up" class="sort-icon"></i>
+              </th>
+              <th class="sortable" data-sort="total">
+                Total (R$)
+                <i data-feather="chevron-up" class="sort-icon"></i>
+              </th>
+              <th>Observação</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="ordemCompraTableBody">
+            <!-- Dados serão inseridos dinamicamente via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-container">
+        <div class="pagination-info">
+          <span>Mostrar</span>
+          <select id="itemsPerPage" class="pagination-select">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+          <span>entradas</span>
+        </div>
+        
+        <div class="pagination-controls">
+          <span class="pagination-text">Primeira</span>
+          <button class="pagination-btn" id="prevPage">
+            <i data-feather="chevron-left"></i>
+          </button>
+          <span class="pagination-current">1</span>
+          <button class="pagination-btn" id="nextPage">
+            <i data-feather="chevron-right"></i>
+          </button>
+          <span class="pagination-text">Última</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Cadastro/Edição Ordem Compra -->
+    <div class="modal-overlay" id="modalOrdemCompra">
+      <div class="modal">
+        <div class="modal-header">
+          <h2 id="modalTitle">Cadastro de Ordem de Compra</h2>
+          <button class="modal-close" id="btnCloseModal">
+            <i data-feather="x"></i>
+          </button>
+        </div>
+        
+        <form id="formOrdemCompra" class="modal-form">
+          <input type="hidden" id="id" name="id" />
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="statusOrdemCompra">Status da Ordem:</label>
+              <select id="statusOrdemCompra" name="statusOrdemCompra" required>
+                <option value="">Selecione um status...</option>
+                <option value="PEND">Pendente</option>
+                <option value="ANDA">Em Andamento</option>
+                <option value="CONC">Concluído</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="valor">Valor Total (R$):</label>
+              <input
+                type="number"
+                id="valor"
+                name="valor"
+                min="0.01"
+                step="0.01"
+                placeholder="Ex: 1500.50"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="dataPrev">Data Prevista:</label>
+              <input type="date" id="dataPrev" name="dataPrev" required />
+            </div>
+            
+            <div class="form-group">
+              <label for="dataOrdem">Data da Ordem:</label>
+              <input type="date" id="dataOrdem" name="dataOrdem" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="dataEntre">Data de Entrega:</label>
+              <input type="date" id="dataEntre" name="dataEntre" />
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <button type="button" class="btn btn-secondary" id="btnCancelModal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
     <!-- Feather Icons -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.2/feather.min.js"></script>
-</head>
-<body>
-    <!-- Header / Breadcrumb -->
-    <div class="page-header">
-        <div class="container">
-            <div class="breadcrumb">
-                <span class="breadcrumb-item">Produtos</span>
-                <span class="breadcrumb-separator">/</span>
-                <span class="breadcrumb-item active">Ordens de Compra</span>
-            </div>
-            <button class="help-btn" id="helpBtn">
-                <i data-feather="help-circle"></i>
-            </button>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <div class="container">
-        <!-- Action Buttons -->
-        <div class="action-bar" id="actionBar">
-            <button class="btn btn-primary" id="newOrder">
-                <i data-feather="plus"></i>
-                Nova Ordem de Compra
-            </button>
-            <button class="btn btn-secondary" id="importXml">
-                <i data-feather="upload"></i>
-                Importar XML
-            </button>
-            <button class="btn btn-danger" id="deleteSelected" disabled>
-                <i data-feather="trash-2"></i>
-                Remover selecionados
-            </button>
-        </div>
-
-        <!-- Data Table -->
-        <div class="table-container" id="tableContainer">
-            <table class="data-table" id="ordersTable">
-                <thead>
-                    <tr>
-                        <th class="checkbox-col">
-                            <label class="checkbox">
-                                <input type="checkbox" id="selectAll">
-                                <span class="checkmark"></span>
-                            </label>
-                        </th>
-                        <th>Número</th>
-                        <th>Fornecedor</th>
-                        <th>Data Emissão</th>
-                        <th>Data Prevista</th>
-                        <th>Status</th>
-                        <th>Valor Total</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="ordersTableBody">
-                    <!-- Dados serão carregados dinamicamente via JavaScript -->
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="pagination-container">
-            <div class="pagination-info">
-                <span>Mostrar</span>
-                <select class="pagination-select" id="pageSize">
-                    <option value="10" selected>10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-                <span>registros por página</span>
-            </div>
-            <div class="pagination-controls">
-                <span class="pagination-label">Primeira</span>
-                <button class="pagination-btn" id="prevPage" disabled>
-                    <i data-feather="chevron-left"></i>
-                </button>
-                <span class="pagination-current">1</span>
-                <button class="pagination-btn" id="nextPage">
-                    <i data-feather="chevron-right"></i>
-                </button>
-                <span class="pagination-label">Última</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Nova Ordem de Compra -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal" id="orderModal">
-            <div class="modal-header">
-                <h2>Adicionar Ordem de Compra</h2>
-                <button class="btn-close" id="closeModal">
-                    <i data-feather="x"></i>
-                </button>
-            </div>
-            
-            <div class="modal-body">
-                <form id="orderForm">
-                    <!-- Data -->
-                    <div class="form-group">
-                        <label>Data de Emissão:</label>
-                        <input type="date" class="form-input" id="dataEmissao" name="dataEmissao" required>
-                    </div>
-
-                    <!-- Data Prevista -->
-                    <div class="form-group">
-                        <label>Data Prevista:</label>
-                        <input type="date" class="form-input" id="dataPrevista" name="dataPrevista" required>
-                    </div>
-
-                    <!-- Fornecedor -->
-                    <div class="form-group">
-                        <label>Fornecedor:</label>
-                        <select class="form-select" id="fornecedor" name="fornecedor" required>
-                            <option value="">- Selecione um fornecedor -</option>
-                        </select>
-                    </div>
-
-                    <!-- Produtos Section -->
-                    <div class="section">
-                        <h3 class="section-title">Produtos</h3>
-                        <div id="produtosSection">
-                            <div class="product-row">
-                                <div class="form-group">
-                                    <label>Produto</label>
-                                    <select class="form-select produto-select">
-                                        <option value="">- Selecione um produto -</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>QTD</label>
-                                    <input type="number" class="form-input quantidade-input" min="1" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Un.</label>
-                                    <div class="unit-display unidade-display">-</div>
-                                </div>
-                                <div class="form-group">
-                                    <label>Preço</label>
-                                    <div class="price-input">
-                                        <span class="currency">R$</span>
-                                        <input type="number" class="form-input preco-input" step="0.01" min="0" required>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label>Valor Total</label>
-                                    <div class="price-input">
-                                        <span class="currency">R$</span>
-                                        <input type="number" class="form-input total-input" step="0.01" readonly>
-                                    </div>
-                                </div>
-                                <div>
-                                    <button type="button" class="btn-icon btn-delete">
-                                        <i data-feather="trash-2"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="action-buttons-row">
-                            <button type="button" class="btn btn-accent" id="addProduct">
-                                <i data-feather="plus"></i>
-                                Adicionar Produto
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Observações -->
-                    <div class="form-group">
-                        <label>Observações:</label>
-                        <textarea class="form-textarea" id="observacoes" name="observacoes" placeholder="(Opcional)"></textarea>
-                    </div>
-                </form>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" id="cancelOrder">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="saveOrder">
-                    <i data-feather="save"></i>
-                    Salvar Ordem
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts -->
-    <script type="module">
-        import { animate } from 'https://cdn.jsdelivr.net/npm/animejs/+esm';
-        window.anime = { animate };
-    </script>
-    <script type="module" src="Assets/js/ApiManager.js"></script>
-    <script type="module" src="Assets/js/NotificationManager.js"></script>
-    <script type="module" src="Assets/js/OrdemCompraComponentsManager.js"></script>
-    <script type="module" src="Assets/js/OrdemCompraManager.js"></script>
+    
+    <!-- Scripts do projeto -->
+    <script src="./Assets/js/ApiManager.js" defer></script>
+    <script src="./Assets/js/NotificationManager.js" defer></script>
+    <script src="./Assets/js/OrdemCompraComponentsManager.js" defer></script>
+    <script src="./Assets/js/OrdemCompraManager.js" defer></script>
     
     <script>
-        // Initialize app when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Feather Icons
-            feather.replace();
-            
-            console.log('DOM carregado, sistema inicializando...');
-        });
+      // Inicializar ícones e aplicação
+      feather.replace();
+      
+      
+
     </script>
-</body>
+  </body>
 </html>

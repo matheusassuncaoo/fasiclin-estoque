@@ -1,472 +1,612 @@
 /**
- * OrdemCompra Manager - Controlador principal da página
- * Coordena todos os componentes e funcionalidades
+ * OrdemCompraManager - Gerenciador Principal
+ * Coordena todas as operações CRUD e integra os outros managers
+ * Implementa o padrão MVC para a página de Ordem de Compra
  */
-
-import apiManager from './ApiManager.js';
-import notificationManager from './NotificationManager.js';
-import componentsManager from './OrdemCompraComponentsManager.js';
-
 class OrdemCompraManager {
     constructor() {
-        this.currentOrder = null;
-        this.produtos = [];
-        this.fornecedores = [];
+        this.ordensCompra = [];
+        this.currentOrdem = null;
+        this.isLoading = false;
+        this.cache = new Map();
         
         this.init();
     }
 
-    init() {
-        this.initializeFeatherIcons();
-        this.loadReferenceData();
-        this.setupProductAutocomplete();
-        this.setupFornecedorAutocomplete();
-        this.setupFormValidation();
+    /**
+     * Inicializa o manager
+     */
+    async init() {
+        console.log('[OrdemCompraManager] Inicializando...');
         
-        console.log('OrdemCompra Manager inicializado com sucesso!');
-    }
-
-    /**
-     * Initialize Feather Icons
-     */
-    initializeFeatherIcons() {
-        if (window.feather) {
-            feather.replace();
-        } else {
-            // Aguardar carregamento do Feather
-            const checkFeather = setInterval(() => {
-                if (window.feather) {
-                    feather.replace();
-                    clearInterval(checkFeather);
-                }
-            }, 100);
-        }
-    }
-
-    /**
-     * Load reference data (produtos, fornecedores)
-     */
-    async loadReferenceData() {
         try {
-            const [produtos, fornecedores] = await Promise.all([
-                apiManager.searchProdutos(),
-                apiManager.getFornecedores()
-            ]);
+            this.setupEventListeners();
+            await this.loadInitialData();
             
-            this.produtos = produtos;
-            this.fornecedores = fornecedores;
-            
-            this.populateFornecedorSelect();
-            
+            console.log('[OrdemCompraManager] Inicializado com sucesso');
         } catch (error) {
-            console.error('Erro ao carregar dados de referência:', error);
+            console.error('[OrdemCompraManager] Erro na inicialização:', error);
+            notify.error('Erro ao inicializar a página. Recarregue e tente novamente.');
         }
     }
 
     /**
-     * Setup produto autocomplete
+     * Configura os event listeners
      */
-    setupProductAutocomplete() {
-        document.addEventListener('change', (e) => {
-            if (e.target.classList.contains('produto-select')) {
-                this.handleProdutoSelect(e.target);
-            }
+    setupEventListeners() {
+        // Eventos do componente de UI
+        document.addEventListener('ordemcompra:form:submit', (e) => {
+            this.handleFormSubmit(e.detail);
+        });
+
+        document.addEventListener('ordemcompra:ordem:view', (e) => {
+            this.handleViewOrdem(e.detail.id);
+        });
+
+        document.addEventListener('ordemcompra:ordem:edit', (e) => {
+            this.handleEditOrdem(e.detail.id);
+        });
+
+        document.addEventListener('ordemcompra:ordem:delete', (e) => {
+            this.handleDeleteOrdem(e.detail.id);
+        });
+
+        document.addEventListener('ordemcompra:ordem:bulkDelete', (e) => {
+            this.handleBulkDelete(e.detail.ids);
+        });
+
+        document.addEventListener('ordemcompra:table:sort', (e) => {
+            this.handleSort(e.detail);
+        });
+
+        document.addEventListener('ordemcompra:pagination:change', () => {
+            this.loadOrdens();
         });
     }
 
+    // ============================================
+    // OPERAÇÕES CRUD
+    // ============================================
+
     /**
-     * Setup fornecedor autocomplete
+     * Carrega dados iniciais
      */
-    setupFornecedorAutocomplete() {
-        const fornecedorSelect = document.getElementById('fornecedor');
-        if (fornecedorSelect) {
-            fornecedorSelect.addEventListener('change', (e) => {
-                this.handleFornecedorSelect(e.target.value);
+    async loadInitialData() {
+        this.setLoading(true);
+        
+        try {
+            await this.loadOrdens();
+        } catch (error) {
+            console.error('[OrdemCompraManager] Erro ao carregar dados iniciais:', error);
+            // Erro já foi tratado no loadOrdens
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    /**
+     * Carrega ordens de compra do backend
+     */
+    async loadOrdens() {
+        this.setLoading(true);
+        
+        try {
+            const params = componentsManager.getPaginationParams();
+            
+            // Buscar do backend
+            const response = await apiManager.getOrdensCompra(params);
+            this.ordensCompra = Array.isArray(response) ? response : response.content || [];
+            
+            // Atualizar cache
+            this.updateCache();
+            
+            // Renderizar dados
+            this.renderOrdens();
+            
+        } catch (error) {
+            console.error('[OrdemCompraManager] Erro ao carregar ordens:', error);
+            
+            if (error.message.includes('CORS') || error.message.includes('NetworkError')) {
+                notify.error('❌ Backend não conectado. Para resolver:<br>1. Inicie o Spring Boot: <code>mvn spring-boot:run</code><br>2. Verifique se está rodando em http://localhost:8080', {
+                    duration: 10000,
+                    title: 'Erro de Conexão',
+                    allowHtml: true
+                });
+            } else {
+                notify.error('Erro ao carregar ordens de compra. Verifique se o backend está rodando.');
+            }
+            
+            // Mostrar estado vazio com instruções
+            this.showConnectionError();
+            throw error;
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    /**
+     * Cria uma nova ordem de compra
+     * @param {Object} ordemData - Dados da ordem
+     */
+    async createOrdem(ordemData) {
+        this.setLoading(true);
+        componentsManager.showFormLoading(true);
+
+        try {
+            // Criar no backend
+            const novaOrdem = await apiManager.createOrdemCompra(ordemData);
+            notify.success('Ordem de compra criada com sucesso!');
+            
+            // Atualizar interface
+            await this.loadOrdens();
+            componentsManager.closeModal();
+            
+        } catch (error) {
+            console.error('[OrdemCompraManager] Erro ao criar ordem:', error);
+            
+            if (error.message.includes('CORS') || error.message.includes('NetworkError')) {
+                notify.error('Erro de CORS: Configure o backend para permitir requisições do frontend');
+            } else {
+                notify.error(`Erro ao criar ordem de compra: ${error.message}`);
+            }
+        } finally {
+            this.setLoading(false);
+            componentsManager.showFormLoading(false);
+        }
+    }
+
+    /**
+     * Atualiza uma ordem de compra existente
+     * @param {number} id - ID da ordem
+     * @param {Object} ordemData - Dados atualizados
+     */
+    async updateOrdem(id, ordemData) {
+        this.setLoading(true);
+        componentsManager.showFormLoading(true);
+
+        try {
+            // Atualizar no backend
+            const ordemAtualizada = await apiManager.updateOrdemCompra(id, ordemData);
+            notify.success('Ordem de compra atualizada com sucesso!');
+            
+            // Atualizar interface
+            await this.loadOrdens();
+            componentsManager.closeModal();
+            
+        } catch (error) {
+            console.error('[OrdemCompraManager] Erro ao atualizar ordem:', error);
+            
+            if (error.message.includes('CORS') || error.message.includes('NetworkError')) {
+                notify.error('Erro de CORS: Configure o backend para permitir requisições do frontend');
+            } else {
+                notify.error(`Erro ao atualizar ordem de compra: ${error.message}`);
+            }
+        } finally {
+            this.setLoading(false);
+            componentsManager.showFormLoading(false);
+        }
+    }
+
+    /**
+     * Exclui uma ordem de compra
+     * @param {number} id - ID da ordem
+     */
+    async deleteOrdem(id) {
+        this.setLoading(true);
+
+        try {
+            // Excluir no backend
+            await apiManager.deleteOrdemCompra(id);
+            notify.success('Ordem de compra excluída com sucesso!');
+            
+            // Atualizar interface
+            componentsManager.selectedItems.delete(id);
+            await this.loadOrdens();
+            
+        } catch (error) {
+            console.error('[OrdemCompraManager] Erro ao excluir ordem:', error);
+            
+            if (error.message.includes('CORS') || error.message.includes('NetworkError')) {
+                notify.error('Erro de CORS: Configure o backend para permitir requisições do frontend');
+            } else {
+                notify.error(`Erro ao excluir ordem de compra: ${error.message}`);
+            }
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    /**
+     * Exclui múltiplas ordens de compra
+     * @param {Array<number>} ids - Array com IDs das ordens
+     */
+    async bulkDelete(ids) {
+        if (!ids || ids.length === 0) return;
+
+        this.setLoading(true);
+        const loadingNotification = notify.loading(`Excluindo ${ids.length} ordem(ns) de compra...`);
+
+        try {
+            // Excluir no backend
+            const results = await apiManager.deleteMultipleOrdensCompra(ids);
+            
+            let successCount = 0;
+            let errorCount = 0;
+            
+            results.forEach(result => {
+                if (result.error) {
+                    errorCount++;
+                } else {
+                    successCount++;
+                }
             });
-        }
-    }
 
-    /**
-     * Setup form validation
-     */
-    setupFormValidation() {
-        // Validation for required fields
-        document.addEventListener('blur', (e) => {
-            if (e.target.hasAttribute('required')) {
-                this.validateField(e.target);
+            // Mostrar resultado
+            notify.hide(loadingNotification);
+            
+            if (successCount > 0) {
+                notify.success(`${successCount} ordem(ns) excluída(s) com sucesso!`);
             }
-        }, true);
-
-        // Real-time calculation
-        document.addEventListener('input', (e) => {
-            if (e.target.classList.contains('quantidade-input') || 
-                e.target.classList.contains('preco-input')) {
-                this.calculateRowTotal(e.target.closest('.product-row'));
-                this.calculateOrderTotal();
+            
+            if (errorCount > 0) {
+                notify.warning(`${errorCount} ordem(ns) não puderam ser excluídas`);
             }
-        });
-    }
 
-    /**
-     * Populate fornecedor select
-     */
-    populateFornecedorSelect() {
-        const fornecedorSelect = document.getElementById('fornecedor');
-        if (!fornecedorSelect || this.fornecedores.length === 0) return;
-
-        fornecedorSelect.innerHTML = '<option value="">Selecione um fornecedor</option>';
-        
-        this.fornecedores.forEach(fornecedor => {
-            const option = document.createElement('option');
-            option.value = fornecedor.id;
-            option.textContent = fornecedor.nome;
-            fornecedorSelect.appendChild(option);
-        });
-    }
-
-    /**
-     * Handle produto selection
-     */
-    async handleProdutoSelect(selectElement) {
-        const produtoId = selectElement.value;
-        const row = selectElement.closest('.product-row');
-        
-        if (!produtoId || !row) return;
-
-        try {
-            const produto = await apiManager.getProduto(produtoId);
-            
-            // Preencher campos do produto
-            const unidadeInput = row.querySelector('.unidade-display');
-            const precoInput = row.querySelector('.preco-input');
-            
-            if (unidadeInput) unidadeInput.textContent = produto.unidade;
-            if (precoInput) precoInput.value = produto.precoUnitario.toFixed(2);
-            
-            this.calculateRowTotal(row);
-            this.calculateOrderTotal();
+            // Limpar seleções e atualizar interface
+            componentsManager.clearSelections();
+            await this.loadOrdens();
             
         } catch (error) {
-            console.error('Erro ao carregar produto:', error);
-            notificationManager.error('Erro ao carregar dados do produto');
+            notify.hide(loadingNotification);
+            console.error('[OrdemCompraManager] Erro na exclusão em massa:', error);
+            
+            if (error.message.includes('CORS') || error.message.includes('NetworkError')) {
+                notify.error('Erro de CORS: Configure o backend para permitir requisições do frontend');
+            } else {
+                notify.error('Erro na exclusão em massa das ordens');
+            }
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    // ============================================
+    // MANIPULADORES DE EVENTOS
+    // ============================================
+
+    /**
+     * Manipula submissão do formulário
+     * @param {Object} detail - Dados do evento
+     */
+    async handleFormSubmit(detail) {
+        const { data, isEdit } = detail;
+        
+        if (isEdit) {
+            await this.updateOrdem(data.id, data);
+        } else {
+            await this.createOrdem(data);
         }
     }
 
     /**
-     * Handle fornecedor selection
+     * Manipula visualização de ordem
+     * @param {number} id - ID da ordem
      */
-    handleFornecedorSelect(fornecedorId) {
-        // Additional logic for fornecedor selection if needed
-        console.log('Fornecedor selecionado:', fornecedorId);
+    async handleViewOrdem(id) {
+        try {
+            const ordem = await this.getOrdem(id);
+            if (ordem) {
+                this.showOrdemDetails(ordem);
+            } else {
+                notify.error('Ordem de compra não encontrada');
+            }
+        } catch (error) {
+            console.error('[OrdemCompraManager] Erro ao visualizar ordem:', error);
+            notify.error('Erro ao carregar detalhes da ordem');
+        }
     }
 
     /**
-     * Add new product row
+     * Manipula edição de ordem
+     * @param {number} id - ID da ordem
      */
-    addProductRow() {
-        const container = document.getElementById('produtosSection');
-        if (!container) return;
-
-        const newRow = this.createProductRow();
-        container.appendChild(newRow);
-        
-        // Populate produto select
-        this.populateProdutoSelect(newRow.querySelector('.produto-select'));
-        
-        // Initialize feather icons
-        feather.replace();
+    async handleEditOrdem(id) {
+        try {
+            const ordem = await this.getOrdem(id);
+            if (ordem) {
+                componentsManager.openModal('edit', ordem);
+            } else {
+                notify.error('Ordem de compra não encontrada');
+            }
+        } catch (error) {
+            console.error('[OrdemCompraManager] Erro ao editar ordem:', error);
+            notify.error('Erro ao carregar dados da ordem');
+        }
     }
 
     /**
-     * Create product row element
+     * Manipula exclusão de ordem
+     * @param {number} id - ID da ordem
      */
-    createProductRow() {
-        const row = document.createElement('div');
-        row.className = 'product-row';
+    async handleDeleteOrdem(id) {
+        await this.deleteOrdem(id);
+    }
+
+    /**
+     * Manipula exclusão em massa
+     * @param {Array<number>} ids - IDs das ordens
+     */
+    async handleBulkDelete(ids) {
+        await this.bulkDelete(ids);
+    }
+
+    /**
+     * Manipula ordenação
+     * @param {Object} sortConfig - Configuração de ordenação
+     */
+    handleSort(sortConfig) {
+        this.sortOrdens(sortConfig);
+        this.renderOrdens();
+    }
+
+    // ============================================
+    // MÉTODOS AUXILIARES
+    // ============================================
+
+    /**
+     * Obtém uma ordem específica
+     * @param {number} id - ID da ordem
+     * @returns {Promise<Object>} - Dados da ordem
+     */
+    async getOrdem(id) {
+        try {
+            // Buscar no backend
+            const ordem = await apiManager.getOrdemCompra(id);
+            return ordem;
+        } catch (error) {
+            console.error('[OrdemCompraManager] Erro ao buscar ordem no backend:', error);
+            
+            if (error.message.includes('CORS') || error.message.includes('NetworkError')) {
+                notify.error('Erro de CORS: Configure o backend para permitir requisições do frontend');
+            } else {
+                notify.error('Erro ao carregar dados da ordem');
+            }
+            
+            return null;
+        }
+    }
+
+    /**
+     * Renderiza as ordens na interface
+     */
+    renderOrdens() {
+        componentsManager.renderTable(this.ordensCompra);
+        componentsManager.updatePagination(this.ordensCompra.length);
+    }
+
+    /**
+     * Ordena as ordens de compra
+     * @param {Object} sortConfig - Configuração de ordenação
+     */
+    sortOrdens(sortConfig) {
+        if (!sortConfig.field) return;
+
+        this.ordensCompra.sort((a, b) => {
+            let valueA = a[sortConfig.field];
+            let valueB = b[sortConfig.field];
+
+            // Tratamento especial para diferentes tipos
+            if (typeof valueA === 'string') {
+                valueA = valueA.toLowerCase();
+                valueB = valueB.toLowerCase();
+            }
+
+            if (valueA < valueB) {
+                return sortConfig.direction === 'asc' ? -1 : 1;
+            }
+            if (valueA > valueB) {
+                return sortConfig.direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+    }
+
+    /**
+     * Mostra detalhes da ordem em modal
+     * @param {Object} ordem - Dados da ordem
+     */
+    showOrdemDetails(ordem) {
+        const statusText = componentsManager.getStatusText(ordem.statusOrdemCompra);
+        const valorFormatado = componentsManager.formatCurrency(ordem.valor);
+        const dataPrevFormatada = componentsManager.formatDate(ordem.dataPrev);
+        const dataOrdemFormatada = componentsManager.formatDate(ordem.dataOrdem);
+        const dataEntreFormatada = ordem.dataEntre ? 
+              componentsManager.formatDate(ordem.dataEntre) : 'Não informada';
+
+        notify.info(`
+            <strong>Ordem de Compra #${ordem.id}</strong><br>
+            Status: ${statusText}<br>
+            Valor: ${valorFormatado}<br>
+            Data da Ordem: ${dataOrdemFormatada}<br>
+            Data Prevista: ${dataPrevFormatada}<br>
+            Data de Entrega: ${dataEntreFormatada}
+        `, { 
+            duration: 8000,
+            title: 'Detalhes da Ordem'
+        });
+    }
+
+    /**
+     * Define estado de loading
+     * @param {boolean} loading - Se está carregando
+     */
+    setLoading(loading) {
+        this.isLoading = loading;
         
-        row.innerHTML = `
-            <div class="form-group">
-                <select class="form-select produto-select" required>
-                    <option value="">Selecione um produto</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <input type="number" class="form-input quantidade-input" placeholder="Qtd" min="1" required>
-            </div>
-            <div class="form-group">
-                <div class="unit-display unidade-display">-</div>
-            </div>
-            <div class="form-group">
-                <div class="price-input">
-                    <span class="currency">R$</span>
-                    <input type="number" class="form-input preco-input" step="0.01" min="0" required>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="price-input">
-                    <span class="currency">R$</span>
-                    <input type="number" class="form-input total-input" step="0.01" readonly>
-                </div>
-            </div>
-            <div>
-                <button type="button" class="btn-icon btn-delete" onclick="this.closest('.product-row').remove(); ordemCompraManager.calculateOrderTotal();" title="Remover">
-                    <i data-feather="trash-2"></i>
-                </button>
-            </div>
+        if (loading) {
+            componentsManager.showTableLoading();
+        }
+    }
+
+    /**
+     * Mostra estado de erro de conexão
+     */
+    showConnectionError() {
+        if (!componentsManager.elements.tableBody) return;
+
+        componentsManager.elements.tableBody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center">
+                    <div class="empty-state" style="padding: 40px;">
+                        <i data-feather="wifi-off" style="font-size: 48px; opacity: 0.5; color: #dc3545;"></i>
+                        <h3 style="color: #dc3545; margin: 16px 0 8px 0;">Backend Não Conectado</h3>
+                        <p style="margin-bottom: 20px;">Para visualizar e gerenciar as ordens de compra:</p>
+                        <ol style="text-align: left; max-width: 400px; margin: 0 auto 20px auto;">
+                            <li>Abra o terminal no diretório do projeto</li>
+                            <li>Execute: <code style="background: #f8f9fa; padding: 2px 6px; border-radius: 4px;">mvn spring-boot:run</code></li>
+                            <li>Aguarde até ver "Started EstoqueApplication"</li>
+                            <li>Recarregue esta página</li>
+                        </ol>
+                        <button class="btn btn-primary" onclick="window.location.reload()">
+                            <i data-feather="refresh-cw"></i>
+                            Tentar Novamente
+                        </button>
+                    </div>
+                </td>
+            </tr>
         `;
-
-        return row;
+        
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
     }
 
     /**
-     * Populate produto select in a row
+     * Atualiza cache local
      */
-    populateProdutoSelect(selectElement) {
-        if (!selectElement || this.produtos.length === 0) return;
-
-        // Clear existing options except first
-        selectElement.innerHTML = '<option value="">Selecione um produto</option>';
-        
-        this.produtos.forEach(produto => {
-            const option = document.createElement('option');
-            option.value = produto.id;
-            option.textContent = produto.nome;
-            selectElement.appendChild(option);
+    updateCache() {
+        this.ordensCompra.forEach(ordem => {
+            this.cache.set(ordem.id, { ...ordem, timestamp: Date.now() });
         });
     }
 
     /**
-     * Calculate row total
+     * Limpa cache expirado
+     * @param {number} maxAge - Idade máxima em ms (padrão: 5 minutos)
      */
-    calculateRowTotal(row) {
-        if (!row) return;
-
-        const quantidadeInput = row.querySelector('.quantidade-input');
-        const precoInput = row.querySelector('.preco-input');
-        const totalInput = row.querySelector('.total-input');
-
-        if (!quantidadeInput || !precoInput || !totalInput) return;
-
-        const quantidade = parseFloat(quantidadeInput.value) || 0;
-        const preco = parseFloat(precoInput.value) || 0;
-        const total = quantidade * preco;
-
-        totalInput.value = total.toFixed(2);
-    }
-
-    /**
-     * Calculate order total
-     */
-    calculateOrderTotal() {
-        const totalInputs = document.querySelectorAll('.total-input');
-        let orderTotal = 0;
-
-        totalInputs.forEach(input => {
-            const value = parseFloat(input.value) || 0;
-            orderTotal += value;
-        });
-
-        // Update total display if exists
-        const totalDisplay = document.getElementById('valorTotal');
-        if (totalDisplay) {
-            totalDisplay.textContent = new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-            }).format(orderTotal);
-        }
-
-        return orderTotal;
-    }
-
-    /**
-     * Validate field
-     */
-    validateField(field) {
-        const isValid = field.checkValidity();
+    clearExpiredCache(maxAge = 5 * 60 * 1000) {
+        const now = Date.now();
         
-        field.classList.toggle('invalid', !isValid);
-        
-        // Remove existing error message
-        const existingError = field.parentNode.querySelector('.error-message');
-        if (existingError) {
-            existingError.remove();
+        for (const [id, data] of this.cache.entries()) {
+            if (now - data.timestamp > maxAge) {
+                this.cache.delete(id);
+            }
         }
-
-        // Add error message if invalid
-        if (!isValid) {
-            const errorMessage = document.createElement('div');
-            errorMessage.className = 'error-message';
-            errorMessage.textContent = field.validationMessage;
-            errorMessage.style.cssText = `
-                color: #ef4444;
-                font-size: 12px;
-                margin-top: 4px;
-            `;
-            field.parentNode.appendChild(errorMessage);
-        }
-
-        return isValid;
     }
 
     /**
-     * Collect form data
+     * Atualiza dados periodicamente
      */
-    collectFormData() {
-        const form = document.getElementById('orderForm');
-        if (!form) return null;
+    startPeriodicUpdate() {
+        // Atualizar a cada 30 segundos se não estiver em uma operação
+        setInterval(() => {
+            if (!this.isLoading && !componentsManager.isModalOpen()) {
+                this.loadOrdens();
+            }
+        }, 30000);
 
-        const formData = new FormData(form);
-        const data = {
-            fornecedor: formData.get('fornecedor'),
-            dataEmissao: formData.get('dataEmissao'),
-            dataPrevista: formData.get('dataPrevista'),
-            observacoes: formData.get('observacoes'),
-            produtos: []
+        // Limpar cache expirado a cada 5 minutos
+        setInterval(() => {
+            this.clearExpiredCache();
+        }, 5 * 60 * 1000);
+    }
+
+    /**
+     * Obtém estatísticas das ordens
+     * @returns {Object} - Estatísticas
+     */
+    getStatistics() {
+        const stats = {
+            total: this.ordensCompra.length,
+            pendentes: 0,
+            andamento: 0,
+            concluidas: 0,
+            valorTotal: 0
         };
 
-        // Collect produtos
-        const productRows = document.querySelectorAll('.product-row');
-        productRows.forEach(row => {
-            const produtoId = row.querySelector('.produto-select')?.value;
-            const quantidade = row.querySelector('.quantidade-input')?.value;
-            const precoUnitario = row.querySelector('.preco-input')?.value;
-
-            if (produtoId && quantidade && precoUnitario) {
-                data.produtos.push({
-                    produtoId: parseInt(produtoId),
-                    quantidade: parseInt(quantidade),
-                    precoUnitario: parseFloat(precoUnitario)
-                });
+        this.ordensCompra.forEach(ordem => {
+            stats.valorTotal += ordem.valor || 0;
+            
+            switch (ordem.statusOrdemCompra) {
+                case 'PEND':
+                    stats.pendentes++;
+                    break;
+                case 'ANDA':
+                    stats.andamento++;
+                    break;
+                case 'CONC':
+                    stats.concluidas++;
+                    break;
             }
         });
 
-        return data;
+        return stats;
     }
 
     /**
-     * Validate complete form
+     * Exporta dados para CSV
      */
-    validateForm(data) {
-        const errors = [];
-
-        if (!data.fornecedor) {
-            errors.push('Fornecedor é obrigatório');
+    exportToCSV() {
+        if (this.ordensCompra.length === 0) {
+            notify.warning('Nenhuma ordem para exportar');
+            return;
         }
 
-        if (!data.dataEmissao) {
-            errors.push('Data de emissão é obrigatória');
-        }
+        const headers = ['ID', 'Status', 'Valor', 'Data Prevista', 'Data da Ordem', 'Data de Entrega'];
+        const csvContent = [
+            headers.join(','),
+            ...this.ordensCompra.map(ordem => [
+                ordem.id,
+                ordem.statusOrdemCompra,
+                ordem.valor,
+                ordem.dataPrev,
+                ordem.dataOrdem,
+                ordem.dataEntre || ''
+            ].join(','))
+        ].join('\n');
 
-        if (!data.dataPrevista) {
-            errors.push('Data prevista é obrigatória');
-        }
-
-        if (data.produtos.length === 0) {
-            errors.push('Pelo menos um produto deve ser adicionado');
-        }
-
-        if (errors.length > 0) {
-            notificationManager.error('Corrija os seguintes erros:\n' + errors.join('\n'));
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Load order data for editing
-     */
-    async loadOrderData(orderId) {
-        try {
-            const order = await apiManager.getOrdemCompra(orderId);
-            this.currentOrder = order;
-            
-            // Populate form fields
-            this.populateForm(order);
-            
-        } catch (error) {
-            console.error('Erro ao carregar ordem:', error);
-            notificationManager.error('Erro ao carregar dados da ordem');
-        }
-    }
-
-    /**
-     * Populate form with order data
-     */
-    populateForm(order) {
-        // Populate basic fields
-        const fields = {
-            'fornecedor': order.fornecedorId,
-            'dataEmissao': order.dataEmissao,
-            'dataPrevista': order.dataPrevista,
-            'observacoes': order.observacoes
-        };
-
-        Object.entries(fields).forEach(([fieldName, value]) => {
-            const field = document.getElementById(fieldName);
-            if (field && value) {
-                field.value = value;
-            }
-        });
-
-        // TODO: Populate produtos if order has items
-    }
-
-    /**
-     * Reset form to initial state
-     */
-    resetForm() {
-        const form = document.getElementById('orderForm');
-        if (form) {
-            form.reset();
-            
-            // Remove extra product rows
-            const productRows = document.querySelectorAll('.product-row:not(:first-child)');
-            productRows.forEach(row => row.remove());
-            
-            // Reset first row
-            const firstRow = document.querySelector('.product-row');
-            if (firstRow) {
-                firstRow.querySelectorAll('input, select').forEach(input => {
-                    input.value = '';
-                });
-                
-                const unidadeDisplay = firstRow.querySelector('.unidade-display');
-                if (unidadeDisplay) {
-                    unidadeDisplay.textContent = '-';
-                }
-            }
-        }
-
-        this.currentOrder = null;
-        this.calculateOrderTotal();
-    }
-
-    /**
-     * Export methods for global access
-     */
-    getPublicMethods() {
-        return {
-            addProductRow: () => this.addProductRow(),
-            collectFormData: () => this.collectFormData(),
-            validateForm: (data) => this.validateForm(data),
-            loadOrderData: (orderId) => this.loadOrderData(orderId),
-            resetForm: () => this.resetForm(),
-            calculateOrderTotal: () => this.calculateOrderTotal()
-        };
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', `ordens_compra_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        notify.success('Dados exportados com sucesso!');
     }
 }
 
-// Initialize manager
-const ordemCompraManager = new OrdemCompraManager();
+// Inicializar quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', () => {
+    // Aguardar um pouco para garantir que todos os scripts foram carregados
+    setTimeout(() => {
+        window.ordemCompraManager = new OrdemCompraManager();
+        
+        // Iniciar atualizações periódicas após 1 minuto
+        setTimeout(() => {
+            ordemCompraManager.startPeriodicUpdate();
+        }, 60000);
+    }, 100);
+});
 
-// Make public methods globally accessible
-window.ordemCompraManager = ordemCompraManager;
-
-// Extend componentsManager with form methods
-if (window.componentsManager) {
-    const publicMethods = ordemCompraManager.getPublicMethods();
-    Object.assign(window.componentsManager, publicMethods);
+// Exportar para uso em outros módulos
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = OrdemCompraManager;
 }
 
-export default ordemCompraManager;
+console.log('[OrdemCompraManager] Script carregado');

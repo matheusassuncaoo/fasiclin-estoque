@@ -1,297 +1,354 @@
 /**
- * API Manager - Gerenciador centralizado de requisições para a API
- * Funcionalidades: HTTP requests, loading states, error handling
+ * ApiManager - Gerenciador de APIs para Sistema Fasiclin
+ * Classe responsável por todas as comunicações HTTP com o backend
+ * Implementa padrões REST e tratamento de erros consistente
  */
-
 class ApiManager {
     constructor() {
-        this.baseURL = 'http://localhost:8080/api';
+        // Configuração base da API
+        this.baseURL = 'http://localhost:8080/api'; // Ajustar conforme configuração do backend
         this.defaultHeaders = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         };
+        
+        // Configurações de timeout e retry
+        this.timeout = 30000; // 30 segundos
+        this.maxRetries = 3;
+        this.retryDelay = 1000; // 1 segundo
     }
 
     /**
-     * Realiza requisição HTTP genérica
+     * Método genérico para fazer requisições HTTP
+     * @param {string} endpoint - Endpoint da API
+     * @param {Object} options - Opções da requisição
+     * @returns {Promise} - Resposta da API
      */
-    async request(endpoint, options = {}) {
+    async makeRequest(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
         const config = {
-            headers: { ...this.defaultHeaders, ...options.headers },
+            method: options.method || 'GET',
+            headers: {
+                ...this.defaultHeaders,
+                ...options.headers
+            },
             ...options
         };
 
-        try {
-            const response = await fetch(url, config);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return await response.json();
-            }
-            
-            return await response.text();
-        } catch (error) {
-            console.error('Erro na requisição:', error);
-            throw error;
+        // Adicionar body apenas para métodos que suportam
+        if (config.method !== 'GET' && config.method !== 'DELETE' && options.body) {
+            config.body = typeof options.body === 'string' 
+                ? options.body 
+                : JSON.stringify(options.body);
         }
-    }
 
-    /**
-     * GET request
-     */
-    async get(endpoint, params = {}) {
-        const queryString = new URLSearchParams(params).toString();
-        const url = queryString ? `${endpoint}?${queryString}` : endpoint;
+        let lastError;
         
-        return this.request(url, { method: 'GET' });
+        // Implementação de retry
+        for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+            try {
+                console.log(`[ApiManager] ${config.method} ${url} (Tentativa ${attempt})`);
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+                
+                const response = await fetch(url, {
+                    ...config,
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                // Verificar se a resposta é válida
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Tentar parsear JSON, se não conseguir retornar texto
+                const contentType = response.headers.get('content-type');
+                let data;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    data = await response.text();
+                }
+                
+                console.log(`[ApiManager] Sucesso: ${config.method} ${url}`, data);
+                return data;
+                
+            } catch (error) {
+                lastError = error;
+                console.error(`[ApiManager] Erro na tentativa ${attempt}:`, error);
+                
+                // Se não é a última tentativa e é um erro de rede, aguardar antes de tentar novamente
+                if (attempt < this.maxRetries && this.isRetryableError(error)) {
+                    console.log(`[ApiManager] Aguardando ${this.retryDelay}ms antes da próxima tentativa...`);
+                    await this.delay(this.retryDelay * attempt); // Backoff exponencial
+                } else {
+                    break;
+                }
+            }
+        }
+        
+        // Se chegou aqui, todas as tentativas falharam
+        console.error(`[ApiManager] Todas as tentativas falharam para ${config.method} ${url}`);
+        throw this.createApiError(lastError, endpoint, config.method);
     }
 
     /**
-     * POST request
+     * Determina se um erro é passível de retry
+     * @param {Error} error - Erro a ser verificado
+     * @returns {boolean} - Se deve tentar novamente
      */
-    async post(endpoint, data = {}) {
-        return this.request(endpoint, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
+    isRetryableError(error) {
+        // Erros de rede ou timeout são passíveis de retry
+        return error.name === 'AbortError' || 
+               error.name === 'TypeError' || 
+               error.message.includes('Failed to fetch') ||
+               error.message.includes('Network Error');
     }
 
     /**
-     * PUT request
+     * Cria um erro padronizado da API
+     * @param {Error} originalError - Erro original
+     * @param {string} endpoint - Endpoint que falhou
+     * @param {string} method - Método HTTP
+     * @returns {Error} - Erro padronizado
      */
-    async put(endpoint, data = {}) {
-        return this.request(endpoint, {
-            method: 'PUT',
-            body: JSON.stringify(data)
-        });
+    createApiError(originalError, endpoint, method) {
+        const error = new Error(`Falha na requisição ${method} ${endpoint}: ${originalError.message}`);
+        error.originalError = originalError;
+        error.endpoint = endpoint;
+        error.method = method;
+        error.isApiError = true;
+        return error;
     }
 
     /**
-     * DELETE request
+     * Utilitário para delay
+     * @param {number} ms - Milissegundos para aguardar
+     * @returns {Promise} - Promise que resolve após o delay
      */
-    async delete(endpoint) {
-        return this.request(endpoint, { method: 'DELETE' });
-    }
-
-    // === MÉTODOS ESPECÍFICOS PARA ORDEM DE COMPRA ===
-
-    /**
-     * Buscar todas as ordens de compra com paginação
-     */
-    async getOrdensCompra(page = 0, size = 10, filters = {}) {
-        const params = { page, size, ...filters };
-        return this.get('/ordens-compra', params);
-    }
-
-    /**
-     * Buscar ordem de compra por ID
-     */
-    async getOrdemCompra(id) {
-        return this.get(`/ordens-compra/${id}`);
-    }
-
-    /**
-     * Criar nova ordem de compra
-     */
-    async createOrdemCompra(ordemData) {
-        return this.post('/ordens-compra', ordemData);
-    }
-
-    /**
-     * Atualizar ordem de compra
-     */
-    async updateOrdemCompra(id, ordemData) {
-        return this.put(`/ordens-compra/${id}`, ordemData);
-    }
-
-    /**
-     * Deletar ordem de compra
-     */
-    async deleteOrdemCompra(id) {
-        return this.delete(`/ordens-compra/${id}`);
-    }
-
-    /**
-     * Buscar produtos para autocomplete
-     */
-    async searchProdutos(query = '', limit = 20) {
-        return this.get('/produtos/search', { q: query, limit });
-    }
-
-    /**
-     * Buscar produto por ID
-     */
-    async getProduto(id) {
-        return this.get(`/produtos/${id}`);
-    }
-
-    /**
-     * Buscar fornecedores
-     */
-    async getFornecedores(query = '') {
-        const params = query ? { q: query } : {};
-        return this.get('/fornecedores', params);
-    }
-
-    // === MÉTODOS UTILITÁRIOS ===
-
-    /**
-     * Simular delay para demonstração de loading
-     */
-    async simulateDelay(ms = 1000) {
+    delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    /**
-     * Interceptor para adicionar loading state
-     */
-    async withLoading(element, asyncFunction) {
-        const originalText = element.textContent;
-        element.classList.add('loading');
-        element.disabled = true;
+    // ============================================
+    // MÉTODOS ESPECÍFICOS PARA ORDEM DE COMPRA
+    // ============================================
 
-        try {
-            const result = await asyncFunction();
-            return result;
-        } finally {
-            element.classList.remove('loading');
-            element.disabled = false;
-            element.textContent = originalText;
+    /**
+     * Busca todas as ordens de compra
+     * @param {Object} params - Parâmetros de busca (página, tamanho, filtros)
+     * @returns {Promise<Array>} - Lista de ordens de compra
+     */
+    async getOrdensCompra(params = {}) {
+        const queryString = new URLSearchParams(params).toString();
+        const endpoint = `/ordens-compra${queryString ? `?${queryString}` : ''}`;
+        return await this.makeRequest(endpoint, { method: 'GET' });
+    }
+
+    /**
+     * Busca uma ordem de compra específica por ID
+     * @param {number} id - ID da ordem de compra
+     * @returns {Promise<Object>} - Dados da ordem de compra
+     */
+    async getOrdemCompra(id) {
+        if (!id) {
+            throw new Error('ID da ordem de compra é obrigatório');
+        }
+        return await this.makeRequest(`/ordens-compra/${id}`, { method: 'GET' });
+    }
+
+    /**
+     * Cria uma nova ordem de compra
+     * @param {Object} ordemCompra - Dados da ordem de compra
+     * @returns {Promise<Object>} - Ordem de compra criada
+     */
+    async createOrdemCompra(ordemCompra) {
+        this.validateOrdemCompra(ordemCompra);
+        return await this.makeRequest('/ordens-compra', {
+            method: 'POST',
+            body: ordemCompra
+        });
+    }
+
+    /**
+     * Atualiza uma ordem de compra existente
+     * @param {number} id - ID da ordem de compra
+     * @param {Object} ordemCompra - Dados atualizados
+     * @returns {Promise<Object>} - Ordem de compra atualizada
+     */
+    async updateOrdemCompra(id, ordemCompra) {
+        if (!id) {
+            throw new Error('ID da ordem de compra é obrigatório para atualização');
+        }
+        this.validateOrdemCompra(ordemCompra, false);
+        return await this.makeRequest(`/ordens-compra/${id}`, {
+            method: 'PUT',
+            body: ordemCompra
+        });
+    }
+
+    /**
+     * Remove uma ordem de compra
+     * @param {number} id - ID da ordem de compra
+     * @returns {Promise} - Confirmação da remoção
+     */
+    async deleteOrdemCompra(id) {
+        if (!id) {
+            throw new Error('ID da ordem de compra é obrigatório para remoção');
+        }
+        return await this.makeRequest(`/ordens-compra/${id}`, { method: 'DELETE' });
+    }
+
+    /**
+     * Remove múltiplas ordens de compra
+     * @param {Array<number>} ids - Array com IDs das ordens
+     * @returns {Promise} - Resultado das remoções
+     */
+    async deleteMultipleOrdensCompra(ids) {
+        if (!Array.isArray(ids) || ids.length === 0) {
+            throw new Error('Array de IDs é obrigatório e não pode estar vazio');
+        }
+        
+        // Executar remoções em paralelo com controle de concorrência
+        const batchSize = 5; // Limitar a 5 requisições simultâneas
+        const results = [];
+        
+        for (let i = 0; i < ids.length; i += batchSize) {
+            const batch = ids.slice(i, i + batchSize);
+            const batchPromises = batch.map(id => 
+                this.deleteOrdemCompra(id).catch(error => ({ id, error }))
+            );
+            
+            const batchResults = await Promise.all(batchPromises);
+            results.push(...batchResults);
+        }
+        
+        return results;
+    }
+
+    /**
+     * Valida os dados de uma ordem de compra
+     * @param {Object} ordemCompra - Dados a serem validados
+     * @param {boolean} isCreate - Se é uma criação (true) ou atualização (false)
+     */
+    validateOrdemCompra(ordemCompra, isCreate = true) {
+        if (!ordemCompra || typeof ordemCompra !== 'object') {
+            throw new Error('Dados da ordem de compra são obrigatórios');
+        }
+
+        const requiredFields = ['statusOrdemCompra', 'valor', 'dataPrev', 'dataOrdem'];
+        const validStatuses = ['PEND', 'ANDA', 'CONC'];
+
+        // Validar campos obrigatórios
+        for (const field of requiredFields) {
+            if (!ordemCompra[field]) {
+                throw new Error(`Campo '${field}' é obrigatório`);
+            }
+        }
+
+        // Validar status
+        if (!validStatuses.includes(ordemCompra.statusOrdemCompra)) {
+            throw new Error(`Status deve ser um dos valores: ${validStatuses.join(', ')}`);
+        }
+
+        // Validar valor
+        const valor = parseFloat(ordemCompra.valor);
+        if (isNaN(valor) || valor <= 0) {
+            throw new Error('Valor deve ser um número maior que zero');
+        }
+
+        // Validar datas
+        this.validateDate(ordemCompra.dataPrev, 'Data prevista');
+        this.validateDate(ordemCompra.dataOrdem, 'Data da ordem');
+        
+        if (ordemCompra.dataEntre) {
+            this.validateDate(ordemCompra.dataEntre, 'Data de entrega');
         }
     }
-}
 
-// === DADOS MOCK PARA DESENVOLVIMENTO ===
-class MockApiManager extends ApiManager {
-    constructor() {
-        super();
-        this.mockData = {
-            ordensCompra: [
-                {
-                    id: 1,
-                    numero: 'OC-2024-001',
-                    fornecedor: 'Fornecedor ABC Ltda',
-                    dataEmissao: '2024-01-15',
-                    dataPrevista: '2024-01-25',
-                    status: 'PENDENTE',
-                    valorTotal: 1250.50,
-                    observacoes: 'Entrega urgente'
-                },
-                {
-                    id: 2,
-                    numero: 'OC-2024-002',
-                    fornecedor: 'Distribuidora XYZ S.A.',
-                    dataEmissao: '2024-01-16',
-                    dataPrevista: '2024-01-30',
-                    status: 'APROVADA',
-                    valorTotal: 890.25,
-                    observacoes: ''
-                },
-                {
-                    id: 3,
-                    numero: 'OC-2024-003',
-                    fornecedor: 'Medicamentos 123',
-                    dataEmissao: '2024-01-18',
-                    dataPrevista: '2024-02-05',
-                    status: 'RECEBIDA',
-                    valorTotal: 2100.75,
-                    observacoes: 'Produtos controlados'
-                }
-            ],
-            produtos: [
-                { id: 1, nome: 'Paracetamol 500mg', unidade: 'CX', precoUnitario: 12.50 },
-                { id: 2, nome: 'Ibuprofeno 600mg', unidade: 'CX', precoUnitario: 18.90 },
-                { id: 3, nome: 'Dipirona 500mg', unidade: 'CX', precoUnitario: 8.75 },
-                { id: 4, nome: 'Amoxicilina 500mg', unidade: 'CX', precoUnitario: 25.30 }
-            ],
-            fornecedores: [
-                { id: 1, nome: 'Fornecedor ABC Ltda', cnpj: '12.345.678/0001-90' },
-                { id: 2, nome: 'Distribuidora XYZ S.A.', cnpj: '98.765.432/0001-10' },
-                { id: 3, nome: 'Medicamentos 123', cnpj: '55.444.333/0001-22' }
-            ]
-        };
+    /**
+     * Valida uma data
+     * @param {string} dateString - String da data
+     * @param {string} fieldName - Nome do campo para mensagem de erro
+     */
+    validateDate(dateString, fieldName) {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            throw new Error(`${fieldName} deve ser uma data válida`);
+        }
     }
 
-    async getOrdensCompra(page = 0, size = 10) {
-        await this.simulateDelay(800);
-        
-        const start = page * size;
-        const end = start + size;
-        const items = this.mockData.ordensCompra.slice(start, end);
-        
-        return {
-            content: items,
-            totalElements: this.mockData.ordensCompra.length,
-            totalPages: Math.ceil(this.mockData.ordensCompra.length / size),
-            number: page,
-            size: size,
-            first: page === 0,
-            last: end >= this.mockData.ordensCompra.length
-        };
+    // ============================================
+    // MÉTODOS UTILITÁRIOS
+    // ============================================
+
+    /**
+     * Testa a conectividade com o backend
+     * @returns {Promise<boolean>} - Status da conexão
+     */
+    async testConnection() {
+        try {
+            // Tentar endpoint de ordens primeiro, depois health
+            await this.makeRequest('/ordens-compra', { method: 'GET' });
+            return true;
+        } catch (error) {
+            try {
+                // Fallback para endpoint de health
+                await this.makeRequest('/health', { method: 'GET' });
+                return true;
+            } catch (healthError) {
+                console.error('[ApiManager] Teste de conexão falhou:', error);
+                return false;
+            }
+        }
     }
 
-    async getOrdemCompra(id) {
-        await this.simulateDelay(500);
-        const ordem = this.mockData.ordensCompra.find(o => o.id == id);
-        if (!ordem) throw new Error('Ordem de compra não encontrada');
-        return ordem;
+    /**
+     * Obtém informações sobre a API
+     * @returns {Promise<Object>} - Informações da API
+     */
+    async getApiInfo() {
+        return await this.makeRequest('/info', { method: 'GET' });
     }
 
-    async createOrdemCompra(ordemData) {
-        await this.simulateDelay(1000);
-        const newOrdem = {
-            id: this.mockData.ordensCompra.length + 1,
-            numero: `OC-2024-${String(this.mockData.ordensCompra.length + 1).padStart(3, '0')}`,
-            ...ordemData
-        };
-        this.mockData.ordensCompra.push(newOrdem);
-        return newOrdem;
+    /**
+     * Configura headers customizados
+     * @param {Object} headers - Headers a serem adicionados
+     */
+    setCustomHeaders(headers) {
+        this.defaultHeaders = { ...this.defaultHeaders, ...headers };
     }
 
-    async updateOrdemCompra(id, ordemData) {
-        await this.simulateDelay(800);
-        const index = this.mockData.ordensCompra.findIndex(o => o.id == id);
-        if (index === -1) throw new Error('Ordem de compra não encontrada');
-        
-        this.mockData.ordensCompra[index] = { ...this.mockData.ordensCompra[index], ...ordemData };
-        return this.mockData.ordensCompra[index];
+    /**
+     * Remove um header customizado
+     * @param {string} headerName - Nome do header a ser removido
+     */
+    removeCustomHeader(headerName) {
+        delete this.defaultHeaders[headerName];
     }
 
-    async deleteOrdemCompra(id) {
-        await this.simulateDelay(600);
-        const index = this.mockData.ordensCompra.findIndex(o => o.id == id);
-        if (index === -1) throw new Error('Ordem de compra não encontrada');
-        
-        this.mockData.ordensCompra.splice(index, 1);
-        return { success: true };
-    }
-
-    async searchProdutos(query = '') {
-        await this.simulateDelay(300);
-        if (!query) return this.mockData.produtos;
-        
-        return this.mockData.produtos.filter(p => 
-            p.nome.toLowerCase().includes(query.toLowerCase())
-        );
-    }
-
-    async getFornecedores(query = '') {
-        await this.simulateDelay(400);
-        if (!query) return this.mockData.fornecedores;
-        
-        return this.mockData.fornecedores.filter(f => 
-            f.nome.toLowerCase().includes(query.toLowerCase())
-        );
+    /**
+     * Altera a URL base da API
+     * @param {string} newBaseURL - Nova URL base
+     */
+    setBaseURL(newBaseURL) {
+        this.baseURL = newBaseURL.endsWith('/') ? newBaseURL.slice(0, -1) : newBaseURL;
     }
 }
 
-// Exportar instância singleton
-const apiManager = new ApiManager(); // Use ApiManager para produção
-// const apiManager = new MockApiManager(); // Use MockApiManager para desenvolvimento
+// Criar instância global do ApiManager
+const apiManager = new ApiManager();
 
-export default apiManager;
+// Configurar headers de autenticação se necessário
+// apiManager.setCustomHeaders({ 'Authorization': 'Bearer YOUR_TOKEN' });
+
+// Exportar para uso em outros módulos
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = ApiManager;
+}
+
+console.log('[ApiManager] Inicializado com sucesso');
