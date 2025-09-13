@@ -135,14 +135,14 @@ public interface LoteRepository extends JpaRepository<Lote, Integer> {
      * 
      * @return Lista de lotes próximos ao vencimento
      */
-    @Query("SELECT l FROM Lote l WHERE l.dataVenc BETWEEN CURRENT_DATE AND (CURRENT_DATE + 30) ORDER BY l.dataVenc ASC")
+    @Query("SELECT l FROM Lote l WHERE l.dataVenc BETWEEN CURRENT_DATE AND :dataLimite ORDER BY l.dataVenc ASC")
     @QueryHints({
         @QueryHint(name = "org.hibernate.readOnly", value = "true"),
         @QueryHint(name = "org.hibernate.fetchSize", value = "50"),
         @QueryHint(name = "org.hibernate.cacheable", value = "false"), // Não cachear consultas dinâmicas
         @QueryHint(name = "jakarta.persistence.query.timeout", value = "2000")
     })
-    List<Lote> findLotesProximosVencimento();
+    List<Lote> findLotesProximosVencimento(@Param("dataLimite") LocalDate dataLimite);
 
     /**
      * Busca lotes por quantidade específica.
@@ -269,81 +269,6 @@ public interface LoteRepository extends JpaRepository<Lote, Integer> {
     })
     Long countLotesVencidosByIdOrdComp(@Param("idOrdComp") Integer idOrdComp);
 
-    /**
-     * Busca lotes por ID do produto.
-     * 
-     * <p><strong>Coluna do banco:</strong> ID_PRODUTO (INT, NOT NULL, FK -> PRODUTO(IDPRODUTO))</p>
-     * 
-     * @param idProduto ID do produto
-     * @return Lista de lotes do produto especificado
-     */
-    @Query("SELECT l FROM Lote l WHERE l.idProduto = :idProduto ORDER BY l.dataVenc ASC")
-    @QueryHints({
-        @QueryHint(name = "org.hibernate.readOnly", value = "true"),
-        @QueryHint(name = "org.hibernate.fetchSize", value = "50"),
-        @QueryHint(name = "org.hibernate.cacheable", value = "true"),
-        @QueryHint(name = "jakarta.persistence.cache.storeMode", value = "USE"),
-        @QueryHint(name = "jakarta.persistence.cache.retrieveMode", value = "USE"), 
-        @QueryHint(name = "jakarta.persistence.query.timeout", value = "2000")
-    })
-    List<Lote> findByIdProduto(@Param("idProduto") Integer idProduto);
 
-    /**
-     * Busca lotes por data de fabricação.
-     * 
-     * <p><strong>Coluna do banco:</strong> DATAFABR (DATE, NOT NULL)</p>
-     * 
-     * @param dataFabricacao Data de fabricação
-     * @return Lista de lotes fabricados na data especificada
-     */
-    @Query("SELECT l FROM Lote l WHERE l.dataFabr = :dataFabricacao ORDER BY l.idLote ASC")
-    @QueryHints({
-        @QueryHint(name = "org.hibernate.readOnly", value = "true"),
-        @QueryHint(name = "org.hibernate.fetchSize", value = "50"),
-        @QueryHint(name = "org.hibernate.cacheable", value = "true"),
-        @QueryHint(name = "jakarta.persistence.cache.storeMode", value = "USE"),
-        @QueryHint(name = "jakarta.persistence.cache.retrieveMode", value = "USE"), 
-        @QueryHint(name = "jakarta.persistence.query.timeout", value = "2000")
-    })
-    List<Lote> findByDataFabricacao(@Param("dataFabricacao") LocalDate dataFabricacao);
-
-    /**
-     * Busca lotes por faixa de datas de fabricação.
-     * 
-     * <p>Útil para relatórios de lotes fabricados em um período específico.</p>
-     * 
-     * @param dataInicio Data inicial de fabricação
-     * @param dataFim Data final de fabricação
-     * @return Lista de lotes fabricados na faixa de datas
-     */
-    @Query("SELECT l FROM Lote l WHERE l.dataFabr BETWEEN :dataInicio AND :dataFim ORDER BY l.dataFabr ASC")
-    @QueryHints({
-        @QueryHint(name = "org.hibernate.readOnly", value = "true"),
-        @QueryHint(name = "org.hibernate.fetchSize", value = "50"),
-        @QueryHint(name = "org.hibernate.cacheable", value = "true"),
-        @QueryHint(name = "jakarta.persistence.cache.storeMode", value = "USE"),
-        @QueryHint(name = "jakarta.persistence.cache.retrieveMode", value = "USE"), 
-        @QueryHint(name = "jakarta.persistence.query.timeout", value = "2000")
-    })
-    List<Lote> findByDataFabricacaoBetween(@Param("dataInicio") LocalDate dataInicio, 
-                                          @Param("dataFim") LocalDate dataFim);
-
-    /**
-     * Conta o total de lotes por ID do produto.
-     * 
-     * <p>Consulta agregada otimizada para dashboards e relatórios.</p>
-     * 
-     * @param idProduto ID do produto
-     * @return Quantidade de lotes do produto
-     */
-    @Query("SELECT COUNT(l) FROM Lote l WHERE l.idProduto = :idProduto")
-    @QueryHints({
-        @QueryHint(name = "org.hibernate.readOnly", value = "true"),
-        @QueryHint(name = "org.hibernate.cacheable", value = "true"),
-        @QueryHint(name = "jakarta.persistence.cache.storeMode", value = "USE"),
-        @QueryHint(name = "jakarta.persistence.cache.retrieveMode", value = "USE"), 
-        @QueryHint(name = "jakarta.persistence.query.timeout", value = "1000")
-    })
-    Long countByIdProduto(@Param("idProduto") Integer idProduto);
 
 }

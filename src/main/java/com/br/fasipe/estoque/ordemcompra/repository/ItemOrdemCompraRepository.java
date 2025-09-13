@@ -155,14 +155,14 @@ public interface ItemOrdemCompraRepository extends JpaRepository<ItemOrdemCompra
      * 
      * @return Lista de itens próximos ao vencimento
      */
-    @Query("SELECT i FROM ItemOrdemCompra i WHERE i.dataVenc BETWEEN CURRENT_DATE AND (CURRENT_DATE + 30) ORDER BY i.dataVenc ASC")
+    @Query("SELECT i FROM ItemOrdemCompra i WHERE i.dataVenc BETWEEN CURRENT_DATE AND :dataLimite ORDER BY i.dataVenc ASC")
     @QueryHints({
         @QueryHint(name = "org.hibernate.readOnly", value = "true"),
         @QueryHint(name = "org.hibernate.fetchSize", value = "50"),
         @QueryHint(name = "org.hibernate.cacheable", value = "false"), // Não cachear consultas dinâmicas
         @QueryHint(name = "jakarta.persistence.query.timeout", value = "2000")
     })
-    List<ItemOrdemCompra> findItensProximosVencimento();
+    List<ItemOrdemCompra> findItensProximosVencimento(@Param("dataLimite") LocalDate dataLimite);
 
     /**
      * Busca itens de ordem de compra por faixa de valor unitário.
@@ -206,12 +206,13 @@ public interface ItemOrdemCompraRepository extends JpaRepository<ItemOrdemCompra
     /**
      * Soma o valor total dos itens por ordem de compra.
      * 
-     * <p>Consulta agregada para obter o valor total de uma ordem de compra.</p>
+     * <p>Consulta agregada para obter o valor total de uma ordem de compra.
+     * Agora utiliza o campo vlrTotal diretamente do banco de dados.</p>
      * 
      * @param idOrdComp ID da ordem de compra
      * @return Valor total dos itens da ordem de compra
      */
-    @Query("SELECT COALESCE(SUM(i.valor * i.qntd), 0) FROM ItemOrdemCompra i WHERE i.idOrdComp = :idOrdComp")
+    @Query("SELECT COALESCE(SUM(i.vlrTotal), 0) FROM ItemOrdemCompra i WHERE i.idOrdComp = :idOrdComp")
     @QueryHints({
         @QueryHint(name = "org.hibernate.readOnly", value = "true"),
         @QueryHint(name = "org.hibernate.cacheable", value = "true"),

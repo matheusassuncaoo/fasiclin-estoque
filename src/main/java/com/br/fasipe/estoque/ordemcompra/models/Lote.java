@@ -74,21 +74,7 @@ public class Lote {
     @Column(name = "QNTD", nullable = false)
     private Integer qntd;
 
-    /**
-     * ID do produto relacionado ao lote.
-     * Campo obrigatório que identifica o produto do lote.
-     */
-    @NotNull(message = "ID do produto é obrigatório")
-    @Column(name = "ID_PRODUTO", nullable = false)
-    private Integer idProduto;
 
-    /**
-     * Data de fabricação do lote.
-     * Campo obrigatório que define quando o lote foi fabricado.
-     */
-    @NotNull(message = "Data de fabricação é obrigatória")
-    @Column(name = "DATAFABR", nullable = false)
-    private LocalDate dataFabr;
 
     /**
      * Verifica se o lote está vencido.

@@ -198,33 +198,7 @@ public class LoteService {
         deleteById(obj.getIdLote());
     }
     
-    /**
-     * Busca lotes por ID do produto.
-     * 
-     * @param idProduto ID do produto (não pode ser nulo)
-     * @return Lista de lotes do produto especificado
-     * @throws IllegalArgumentException se o ID for nulo
-     */
-    public List<Lote> findByIdProduto(@NotNull Integer idProduto) {
-        if (idProduto == null) {
-            throw new IllegalArgumentException("ID do produto não pode ser nulo");
-        }
-        return loteRepository.findByIdProduto(idProduto);
-    }
-    
-    /**
-     * Busca lotes por data de fabricação.
-     * 
-     * @param dataFabricacao Data de fabricação (não pode ser nula)
-     * @return Lista de lotes com a data de fabricação especificada
-     * @throws IllegalArgumentException se a data for nula
-     */
-    public List<Lote> findByDataFabricacao(@NotNull LocalDate dataFabricacao) {
-        if (dataFabricacao == null) {
-            throw new IllegalArgumentException("Data de fabricação não pode ser nula");
-        }
-        return loteRepository.findByDataFabricacao(dataFabricacao);
-    }
+
     
     /**
      * Busca lotes por data de validade.
@@ -264,26 +238,7 @@ public class LoteService {
         return loteRepository.findByDataVencimentoBetween(hoje, hoje.plusYears(100));
     }
     
-    /**
-     * Busca lotes por faixa de datas de fabricação.
-     * 
-     * @param dataInicio Data inicial (não pode ser nula)
-     * @param dataFim Data final (não pode ser nula)
-     * @return Lista de lotes fabricados dentro do período especificado
-     * @throws IllegalArgumentException se alguma data for nula ou se a data inicial for posterior à final
-     */
-    public List<Lote> findByDataFabricacaoBetween(@NotNull LocalDate dataInicio, @NotNull LocalDate dataFim) {
-        if (dataInicio == null) {
-            throw new IllegalArgumentException("Data inicial não pode ser nula");
-        }
-        if (dataFim == null) {
-            throw new IllegalArgumentException("Data final não pode ser nula");
-        }
-        if (dataInicio.isAfter(dataFim)) {
-            throw new IllegalArgumentException("Data inicial não pode ser posterior à data final");
-        }
-        return loteRepository.findByDataFabricacaoBetween(dataInicio, dataFim);
-    }
+
     
     /**
      * Busca lotes por faixa de datas de validade.
@@ -306,19 +261,7 @@ public class LoteService {
         return loteRepository.findByDataVencimentoBetween(dataInicio, dataFim);
     }
     
-    /**
-     * Conta lotes por produto.
-     * 
-     * @param idProduto ID do produto (não pode ser nulo)
-     * @return Quantidade de lotes do produto especificado
-     * @throws IllegalArgumentException se o ID for nulo
-     */
-    public Long countByIdProduto(@NotNull Integer idProduto) {
-        if (idProduto == null) {
-            throw new IllegalArgumentException("ID do produto não pode ser nulo");
-        }
-        return loteRepository.countByIdProduto(idProduto);
-    }
+
     
     /**
      * Busca lotes por data de vencimento específica.
@@ -368,7 +311,8 @@ public class LoteService {
      * @return Lista de lotes próximos ao vencimento
      */
     public List<Lote> findLotesProximosVencimento() {
-        return loteRepository.findLotesProximosVencimento();
+        LocalDate dataLimite = LocalDate.now().plusDays(30);
+        return loteRepository.findLotesProximosVencimento(dataLimite);
     }
     
     /**

@@ -31,6 +31,7 @@ import lombok.NoArgsConstructor;
  * - idProduto: ID do produto
  * - qntd: Quantidade do produto
  * - valor: Valor unitário do produto
+ * - vlrTotal: Valor total do item (quantidade × valor unitário)
  * - dataVenc: Data de vencimento do item
  * 
  * @author Sistema Fasiclin
@@ -97,6 +98,15 @@ public class ItemOrdemCompra {
     @Column(name = "DATAVENC", nullable = false)
     private LocalDate dataVenc;
 
+    /**
+     * Valor total do item (quantidade × valor unitário).
+     * Campo calculado automaticamente com precisão de 10 dígitos e 2 casas decimais.
+     */
+    @DecimalMin(value = "0.00", message = "Valor total deve ser maior ou igual a zero")
+    @Digits(integer = 8, fraction = 2, message = "Valor total deve ter no máximo 8 dígitos inteiros e 2 decimais")
+    @Column(name = "VLR_TOTAL", nullable = false, precision = 10, scale = 2)
+    private BigDecimal vlrTotal;
+
 
 
     // Métodos utilitários
@@ -108,8 +118,11 @@ public class ItemOrdemCompra {
      */
     public BigDecimal calcularValorTotal() {
         if (qntd != null && valor != null) {
-            return valor.multiply(BigDecimal.valueOf(qntd));
+            BigDecimal total = valor.multiply(BigDecimal.valueOf(qntd));
+            this.vlrTotal = total; // Atualiza o campo vlrTotal
+            return total;
         }
+        this.vlrTotal = BigDecimal.ZERO;
         return BigDecimal.ZERO;
     }
 
@@ -147,6 +160,34 @@ public class ItemOrdemCompra {
             return LocalDate.now().until(dataVenc).getDays();
         }
         return 0;
+    }
+
+    /**
+     * Método setter customizado para quantidade que recalcula o valor total automaticamente.
+     * 
+     * @param qntd Nova quantidade
+     */
+    public void setQntd(Integer qntd) {
+        this.qntd = qntd;
+        calcularValorTotal();
+    }
+
+    /**
+     * Método setter customizado para valor que recalcula o valor total automaticamente.
+     * 
+     * @param valor Novo valor unitário
+     */
+    public void setValor(BigDecimal valor) {
+        this.valor = valor;
+        calcularValorTotal();
+    }
+
+    /**
+     * Inicializa o valor total baseado na quantidade e valor atual.
+     * Método útil para garantir que o valor total esteja sempre atualizado.
+     */
+    public void inicializarValorTotal() {
+        calcularValorTotal();
     }
 
 

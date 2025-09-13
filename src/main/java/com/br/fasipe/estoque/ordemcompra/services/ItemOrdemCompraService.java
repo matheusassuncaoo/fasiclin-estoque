@@ -102,6 +102,9 @@ public class ItemOrdemCompraService {
         // Validações de negócio adicionais
         validateBusinessRules(obj);
         
+        // Calcula o valor total automaticamente
+        obj.inicializarValorTotal();
+        
         try {
             return itemOrdemCompraRepository.save(obj);
         } catch (DataIntegrityViolationException e) {
@@ -142,6 +145,9 @@ public class ItemOrdemCompraService {
         
         // Validações de negócio para atualização
         validateUpdateRules(obj, existingItem);
+        
+        // Recalcula o valor total automaticamente
+        obj.inicializarValorTotal();
         
         try {
             return itemOrdemCompraRepository.save(obj);
@@ -273,7 +279,8 @@ public class ItemOrdemCompraService {
      * @return Lista de itens próximos ao vencimento
      */
     public List<ItemOrdemCompra> findItensProximosVencimento() {
-        return itemOrdemCompraRepository.findItensProximosVencimento();
+        LocalDate dataLimite = LocalDate.now().plusDays(30);
+        return itemOrdemCompraRepository.findItensProximosVencimento(dataLimite);
     }
     
     /**
@@ -371,10 +378,8 @@ public class ItemOrdemCompraService {
             throw new IllegalArgumentException("Item não pode ser nulo");
         }
         
-        // Calcula o valor total mas não armazena ainda (campo não existe no modelo)
-        calcularValorTotal(item);
-        // TODO: Implementar campo valorTotal no modelo ItemOrdemCompra se necessário
-        // item.setVlrTotal(valorTotal);
+        // Calcula e atualiza o valor total usando o método do modelo
+        item.inicializarValorTotal();
         
         return update(item);
     }

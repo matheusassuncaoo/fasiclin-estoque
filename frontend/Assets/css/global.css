@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+:root {
+    /* === SISTEMA DE TEMAS DINÂMICO === */
+    
+    /* Fontes */
+    --font-primary: 'Montserrat', sans-serif;
+
+    
+    /* Cores do tema - Podem ser alteradas dinamicamente via JavaScript */
+    --theme-primary: #335e9e;
+    --theme-primary-hover: #2a4a7a;
+    --theme-primary-light: #4a7bc8;
+    --theme-primary-dark: #1e3a5f;
+    
+    --theme-secondary: #6366f1;
+    --theme-secondary-hover: #4f46e5;
+    --theme-secondary-light: #818cf8;
+    --theme-secondary-dark: #3730a3;
+    
+    --theme-accent: #10b981;
+    --theme-accent-hover: #059669;
+    --theme-accent-light: #34d399;
+    --theme-accent-dark: #047857;
+    
+    --theme-warning: #f59e0b;
+    --theme-warning-hover: #d97706;
+    --theme-warning-light: #fbbf24;
+    --theme-warning-dark: #92400e;
+    
+    --theme-danger: #ef4444;
+    --theme-danger-hover: #dc2626;
+    --theme-danger-light: #f87171;
+    --theme-danger-dark: #991b1b;
+    
+    /* Cores neutras */
+    --color-white: #ffffff;
+    --color-black: #000000;
+    --color-gray-50: #f9fafb;
+    --color-gray-100: #f3f4f6;
+    --color-gray-200: #e5e7eb;
+    --color-gray-300: #d1d5db;
+    --color-gray-400: #9ca3af;
+    --color-gray-500: #6b7280;
+    --color-gray-600: #4b5563;
+    --color-gray-700: #374151;
+    --color-gray-800: #1f2937;
+    --color-gray-900: #111827;
+    
+    /* Cores de fundo */
+    --bg-primary: var(--color-white);
+    --bg-secondary: var(--color-gray-50);
+    --bg-tertiary: var(--color-gray-100);
+    --bg-dark: var(--color-gray-900);
+    --bg-overlay: rgba(0, 0, 0, 0.5);
+    
+    /* Cores de texto */
+    --text-primary: var(--color-gray-900);
+    --text-secondary: var(--color-gray-600);
+    --text-tertiary: var(--color-gray-400);
+    --text-light: var(--color-white);
+    --text-theme: var(--theme-primary);
+    
+    /* Espaçamentos */
+    --spacing-xs: 0.25rem;    /* 4px */
+    --spacing-sm: 0.5rem;     /* 8px */
+    --spacing-md: 1rem;       /* 16px */
+    --spacing-lg: 1.5rem;     /* 24px */
+    --spacing-xl: 2rem;       /* 32px */
+    --spacing-2xl: 3rem;      /* 48px */
+    --spacing-3xl: 4rem;      /* 64px */
+    
+    /* Border radius */
+    --radius-sm: 0.25rem;     /* 4px */
+    --radius-md: 0.5rem;      /* 8px */
+    --radius-lg: 0.75rem;     /* 12px */
+    --radius-xl: 1rem;        /* 16px */
+    --radius-2xl: 1.5rem;     /* 24px */
+    --radius-full: 9999px;
+    
+    /* Sombras */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    
+    /* Transições */
+    --transition-fast: 150ms ease-in-out;
+    --transition-normal: 300ms ease-in-out;
+    --transition-slow: 500ms ease-in-out;
+    
+    /* Z-index */
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal: 1040;
+    --z-popover: 1050;
+    --z-tooltip: 1060;
+}
+
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+
+

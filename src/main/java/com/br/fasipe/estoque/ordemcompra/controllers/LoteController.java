@@ -185,55 +185,9 @@ public class LoteController {
         }
     }
 
-    /**
-     * Busca lotes por ID do produto.
-     * 
-     * @param idProduto ID do produto
-     * @return ResponseEntity com lista de lotes
-     */
-    @GetMapping("/produto/{idProduto}")
-    @Operation(summary = "Buscar lotes por produto", description = "Retorna todos os lotes de um produto específico")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class))),
-        @ApiResponse(responseCode = "400", description = "ID inválido",
-                content = @Content)
-    })
-    public ResponseEntity<List<Lote>> findByIdProduto(
-            @Parameter(description = "ID do produto", required = true)
-            @PathVariable @NotNull Integer idProduto) {
-        try {
-            List<Lote> lotes = loteService.findByIdProduto(idProduto);
-            return ResponseEntity.ok(lotes);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
 
-    /**
-     * Busca lotes por data de fabricação.
-     * 
-     * @param dataFabricacao Data de fabricação
-     * @return ResponseEntity com lista de lotes
-     */
-    @GetMapping("/fabricacao/{dataFabricacao}")
-    @Operation(summary = "Buscar lotes por data de fabricação", description = "Retorna lotes com data de fabricação específica")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class))),
-        @ApiResponse(responseCode = "400", description = "Data inválida",
-                content = @Content)
-    })
-    public ResponseEntity<List<Lote>> findByDataFabricacao(
-            @Parameter(description = "Data de fabricação (formato: yyyy-MM-dd)", required = true)
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFabricacao) {
-        try {
-            List<Lote> lotes = loteService.findByDataFabricacao(dataFabricacao);
-            return ResponseEntity.ok(lotes);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
+
+
 
     /**
      * Busca lotes por data de validade.
@@ -308,33 +262,7 @@ public class LoteController {
         return ResponseEntity.ok(lotes);
     }
 
-    /**
-     * Busca lotes por faixa de datas de fabricação.
-     * 
-     * @param dataInicio Data inicial
-     * @param dataFim Data final
-     * @return ResponseEntity com lista de lotes
-     */
-    @GetMapping("/fabricacao-periodo")
-    @Operation(summary = "Buscar lotes por período de fabricação", description = "Retorna lotes fabricados dentro do período especificado")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class))),
-        @ApiResponse(responseCode = "400", description = "Parâmetros inválidos",
-                content = @Content)
-    })
-    public ResponseEntity<List<Lote>> findByDataFabricacaoBetween(
-            @Parameter(description = "Data inicial (formato: yyyy-MM-dd)", required = true)
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
-            @Parameter(description = "Data final (formato: yyyy-MM-dd)", required = true)
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim) {
-        try {
-            List<Lote> lotes = loteService.findByDataFabricacaoBetween(dataInicio, dataFim);
-            return ResponseEntity.ok(lotes);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
+
 
     /**
      * Busca lotes por faixa de datas de validade.
@@ -364,28 +292,7 @@ public class LoteController {
         }
     }
 
-    /**
-     * Conta lotes por produto.
-     * 
-     * @param idProduto ID do produto
-     * @return ResponseEntity com a contagem
-     */
-    @GetMapping("/count/produto/{idProduto}")
-    @Operation(summary = "Contar lotes por produto", description = "Retorna a quantidade de lotes de um produto")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Contagem retornada com sucesso"),
-        @ApiResponse(responseCode = "400", description = "ID inválido")
-    })
-    public ResponseEntity<Long> countByIdProduto(
-            @Parameter(description = "ID do produto", required = true)
-            @PathVariable @NotNull Integer idProduto) {
-        try {
-            Long count = loteService.countByIdProduto(idProduto);
-            return ResponseEntity.ok(count);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
+
 
     /**
      * Verifica se um lote está vencido.
