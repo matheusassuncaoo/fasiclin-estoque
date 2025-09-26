@@ -344,4 +344,45 @@ public class OrdemCompraService {
         // Aplicar validações gerais
         validateBusinessRules(novaOrdem);
     }
+
+    /**
+     * Remove uma ordem de compra (delete físico).
+     * 
+     * NOTA: Como não temos campos de desativação no banco, 
+     * esta operação remove fisicamente a ordem.
+     * 
+     * @param id ID da ordem de compra
+     * @param usuarioLogin login do usuário que está removendo (para auditoria)
+     * @param motivo motivo da remoção (para auditoria)
+     * @throws EntityNotFoundException se a ordem não for encontrada
+     * @throws IllegalStateException se a ordem não pode ser removida
+     */
+    @Transactional
+    public void deleteWithAudit(@NotNull Integer id, @NotNull String usuarioLogin, String motivo) {
+        if (id == null) {
+            throw new IllegalArgumentException("ID da ordem não pode ser nulo");
+        }
+        
+        if (usuarioLogin == null || usuarioLogin.trim().isEmpty()) {
+            throw new IllegalArgumentException("Login do usuário é obrigatório");
+        }
+        
+        // Buscar ordem existente
+        OrdemCompra ordem = findById(id);
+        
+        // Verificar se pode ser removida baseado no status
+        if (ordem.getStatusOrdemCompra() == StatusOrdemCompra.CONC) {
+            throw new IllegalStateException("Não é possível remover uma ordem já concluída");
+        }
+        
+        // Log para auditoria
+        System.out.println("[OrdemCompraService] Ordem removida - ID: " + id + 
+                          ", Status: " + ordem.getStatusOrdemCompra() +
+                          ", Valor: " + ordem.getValor() +
+                          ", Usuário: " + usuarioLogin + 
+                          ", Motivo: " + (motivo != null ? motivo : "Não informado"));
+        
+        // Remover fisicamente
+        ordemCompraRepository.deleteById(id);
+    }
 }

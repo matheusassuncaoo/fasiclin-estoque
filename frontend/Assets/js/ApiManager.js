@@ -338,10 +338,159 @@ class ApiManager {
     setBaseURL(newBaseURL) {
         this.baseURL = newBaseURL.endsWith('/') ? newBaseURL.slice(0, -1) : newBaseURL;
     }
+
+    /**
+     * Adiciona itens a uma ordem de compra existente
+     * @param {number} ordemId - ID da ordem de compra
+     * @param {Array} itens - Array com os itens para adicionar
+     * @returns {Promise<Object>} - Resposta da API
+     */
+    async adicionarItensOrdem(ordemId, itens) {
+        console.log('[ApiManager] Adicionando itens à ordem:', { ordemId, itens });
+        
+        if (!ordemId || !itens || !Array.isArray(itens) || itens.length === 0) {
+            throw new Error('ID da ordem e itens são obrigatórios');
+        }
+
+        // Validar estrutura dos itens
+        for (const item of itens) {
+            if (!item.produtoId || !item.quantidade || !item.precoUnitario) {
+                throw new Error('Todos os itens devem ter produtoId, quantidade e precoUnitario');
+            }
+        }
+
+        try {
+            const response = await this.makeRequest(`/ordens-compra/${ordemId}/itens`, {
+                method: 'POST',
+                body: itens
+            });
+
+            console.log('[ApiManager] Itens adicionados com sucesso:', response);
+            return response;
+        } catch (error) {
+            console.error('[ApiManager] Erro ao adicionar itens:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Busca itens de uma ordem de compra
+     * @param {number} ordemId - ID da ordem de compra
+     * @returns {Promise<Array>} - Lista de itens
+     */
+    async getItensOrdem(ordemId) {
+        console.log('[ApiManager] Buscando itens da ordem:', ordemId);
+        
+        if (!ordemId) {
+            throw new Error('ID da ordem é obrigatório');
+        }
+
+        try {
+            const response = await this.makeRequest(`/ordens-compra/${ordemId}/itens`, {
+                method: 'GET'
+            });
+
+            console.log('[ApiManager] Itens encontrados:', response);
+            return response || [];
+        } catch (error) {
+            console.error('[ApiManager] Erro ao buscar itens:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Atualiza um item específico de uma ordem
+     * @param {number} ordemId - ID da ordem de compra
+     * @param {number} itemId - ID do item
+     * @param {Object} dadosItem - Dados atualizados do item
+     * @returns {Promise<Object>} - Item atualizado
+     */
+    async atualizarItemOrdem(ordemId, itemId, dadosItem) {
+        console.log('[ApiManager] Atualizando item:', { ordemId, itemId, dadosItem });
+        
+        if (!ordemId || !itemId || !dadosItem) {
+            throw new Error('ID da ordem, ID do item e dados são obrigatórios');
+        }
+
+        try {
+            const response = await this.makeRequest(`/ordens-compra/${ordemId}/itens/${itemId}`, {
+                method: 'PUT',
+                body: dadosItem
+            });
+
+            console.log('[ApiManager] Item atualizado:', response);
+            return response;
+        } catch (error) {
+            console.error('[ApiManager] Erro ao atualizar item:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Remove um item de uma ordem de compra
+     * @param {number} ordemId - ID da ordem de compra  
+     * @param {number} itemId - ID do item
+     * @returns {Promise<Object>} - Resposta da API
+     */
+    async removerItemOrdem(ordemId, itemId) {
+        console.log('[ApiManager] Removendo item:', { ordemId, itemId });
+        
+        if (!ordemId || !itemId) {
+            throw new Error('ID da ordem e ID do item são obrigatórios');
+        }
+
+        try {
+            const response = await this.makeRequest(`/ordens-compra/${ordemId}/itens/${itemId}`, {
+                method: 'DELETE'
+            });
+
+            console.log('[ApiManager] Item removido:', response);
+            return response;
+        } catch (error) {
+            console.error('[ApiManager] Erro ao remover item:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Cria uma nova ordem de compra com itens em sequência
+     * @param {Object} dadosOrdem - Dados da ordem de compra (sem itens)
+     * @param {Array} itens - Array com os itens para adicionar
+     * @returns {Promise<Object>} - Ordem criada com itens
+     */
+    async criarOrdemComItens(dadosOrdem, itens = []) {
+        console.log('[ApiManager] Criando ordem completa com itens:', { dadosOrdem, itens });
+        
+        try {
+            // 1. Primeiro criar a ordem de compra
+            const ordemCriada = await this.createOrdemCompra(dadosOrdem);
+            console.log('[ApiManager] Ordem criada:', ordemCriada);
+            
+            // 2. Se há itens, adicioná-los à ordem criada
+            if (itens && itens.length > 0) {
+                console.log('[ApiManager] Adicionando itens à ordem:', itens);
+                const itensAdicionados = await this.adicionarItensOrdem(ordemCriada.id, itens);
+                console.log('[ApiManager] Itens adicionados:', itensAdicionados);
+                
+                // 3. Buscar a ordem atualizada com valores recalculados
+                const ordemAtualizada = await this.getOrdemCompra(ordemCriada.id);
+                return ordemAtualizada;
+            }
+            
+            return ordemCriada;
+            
+        } catch (error) {
+            console.error('[ApiManager] Erro ao criar ordem com itens:', error);
+            throw error;
+        }
+    }
 }
 
 // Criar instância global do ApiManager
 const apiManager = new ApiManager();
+
+// Disponibilizar globalmente
+window.apiManager = apiManager;
 
 // Configurar headers de autenticação se necessário
 // apiManager.setCustomHeaders({ 'Authorization': 'Bearer YOUR_TOKEN' });

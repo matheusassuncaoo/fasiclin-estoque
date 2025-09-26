@@ -18,11 +18,11 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(@NonNull CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOriginPatterns("*")  // Usar patterns em vez de origins
+        registry.addMapping("/api/**")  // Mais específico
+                .allowedOrigins("http://localhost:5500", "http://127.0.0.1:5500") // URLs específicas do frontend
                 .allowedHeaders("*")
-                .allowedMethods("GET", "PUT", "POST", "PATCH", "DELETE", "OPTIONS")
-                .allowCredentials(false)     // Importante: false para usar allowedOriginPatterns("*")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                .allowCredentials(true)      
                 .maxAge(3600);
     }
 
@@ -30,23 +30,27 @@ public class WebConfig implements WebMvcConfigurer {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // Permitir qualquer origem durante desenvolvimento
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        // URLs específicas do frontend Live Server
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:5500", 
+            "http://127.0.0.1:5500"
+        ));
         
-        // Permitir todos os métodos HTTP
+        // Métodos HTTP necessários
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         
-        // Permitir todos os headers
+        // Headers necessários (incluindo Content-Type para JSON)
         configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setExposedHeaders(Arrays.asList("*"));
         
-        // Não usar credentials para simplificar CORS
-        configuration.setAllowCredentials(false);
+        // Permitir credentials
+        configuration.setAllowCredentials(true);
         
         // Cache preflight por 1 hora
         configuration.setMaxAge(3600L);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration("/api/**", configuration);
         
         return source;
     }

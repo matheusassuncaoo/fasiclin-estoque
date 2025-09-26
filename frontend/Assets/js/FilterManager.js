@@ -1,0 +1,396 @@
+/**
+ * FilterManager - Gerenciador de Filtros para Ordens de Compra
+ * Implementa filtros avançados e ordenação baseados nos endpoints da API
+ */
+class FilterManager {
+    constructor(ordemCompraManager) {
+        this.ordemCompraManager = ordemCompraManager;
+        this.currentFilters = {
+            status: '',
+            valorMin: '',
+            valorMax: '',
+            dataInicio: '',
+            dataFim: ''
+        };
+        this.currentSort = {
+            field: 'id',
+            direction: 'asc'
+        };
+        
+        this.init();
+    }
+
+    /**
+     * Inicializa o FilterManager
+     */
+    init() {
+        console.log('[FilterManager] Inicializando...');
+        
+        // Aguardar ApiManager estar disponível
+        if (!window.api) {
+            console.warn('[FilterManager] ApiManager não disponível ainda, aguardando...');
+            setTimeout(() => this.init(), 100);
+            return;
+        }
+        
+        this.setupEventListeners();
+        this.setupDateDefaults();
+    }
+
+    /**
+     * Configura valores padrão para filtros de data
+     */
+    setupDateDefaults() {
+        const hoje = new Date();
+        const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+        
+        // Não aplicar filtros por padrão, apenas manter os campos vazios
+        // para que o usuário possa escolher o período que desejar
+    }
+
+    /**
+     * Configura os event listeners dos filtros
+     */
+    setupEventListeners() {
+        // Botão aplicar filtros
+        const btnAplicarFiltros = document.getElementById('btnAplicarFiltros');
+        if (btnAplicarFiltros) {
+            btnAplicarFiltros.addEventListener('click', () => {
+                this.applyFilters();
+            });
+        }
+
+        // Botão limpar filtros
+        const btnLimparFiltros = document.getElementById('btnLimparFiltros');
+        if (btnLimparFiltros) {
+            btnLimparFiltros.addEventListener('click', () => {
+                this.clearFilters();
+            });
+        }
+
+        // Enter nos campos de input
+        const filterInputs = document.querySelectorAll('.filter-input, .filter-select');
+        filterInputs.forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.applyFilters();
+                }
+            });
+        });
+
+        // Ordenação da tabela
+        const sortableHeaders = document.querySelectorAll('.sortable');
+        sortableHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const field = header.getAttribute('data-sort');
+                this.handleSort(field);
+            });
+        });
+    }
+
+    /**
+     * Aplica os filtros selecionados
+     */
+    async applyFilters() {
+        try {
+            // Verificar se ApiManager está disponível
+            if (!window.api) {
+                console.error('[FilterManager] ApiManager não está disponível');
+                return;
+            }
+
+            // Coleta os valores dos filtros
+            this.currentFilters = {
+                status: document.getElementById('filterStatus')?.value || '',
+                valorMin: document.getElementById('filterValorMin')?.value || '',
+                valorMax: document.getElementById('filterValorMax')?.value || '',
+                dataInicio: document.getElementById('filterDataInicio')?.value || '',
+                dataFim: document.getElementById('filterDataFim')?.value || ''
+            };
+
+            console.log('[FilterManager] Aplicando filtros:', this.currentFilters);
+
+            // Valida os filtros
+            if (!this.validateFilters()) {
+                return;
+            }
+
+            // Aplica os filtros via API
+            await this.loadFilteredData();
+            
+            console.log('Filtros aplicados com sucesso!');
+            
+        } catch (error) {
+            console.error('[FilterManager] Erro ao aplicar filtros:', error);
+        }
+    }
+
+    /**
+     * Valida os filtros antes de aplicar
+     */
+    validateFilters() {
+        const { valorMin, valorMax, dataInicio, dataFim } = this.currentFilters;
+
+        // Validação de valores
+        if (valorMin && valorMax && parseFloat(valorMin) > parseFloat(valorMax)) {
+            console.error('Valor mínimo não pode ser maior que o valor máximo');
+            return false;
+        }
+
+        // Validação de datas
+        if (dataInicio && dataFim && new Date(dataInicio) > new Date(dataFim)) {
+            console.error('❌ Data de início não pode ser posterior à data fim');
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Carrega dados filtrados da API
+     */
+    async loadFilteredData() {
+        const { status, valorMin, valorMax, dataInicio, dataFim } = this.currentFilters;
+        let endpoint = '/api/ordens-compra';
+        let ordensCompra = [];
+
+        try {
+            // Verificar se o ApiManager está disponível
+            if (!window.api) {
+                console.error('[FilterManager] ApiManager não disponível');
+                return;
+            }
+
+            // Aplica filtros específicos baseados nos endpoints disponíveis
+            if (status) {
+                endpoint = `/api/ordens-compra/status/${status}`;
+                ordensCompra = await window.api.get(endpoint);
+            } else if (valorMin || valorMax) {
+                const min = valorMin || 0;
+                const max = valorMax || 999999.99;
+                endpoint = `/api/ordens-compra/valor?valorMin=${min}&valorMax=${max}`;
+                ordensCompra = await window.api.get(endpoint);
+            } else if (dataInicio && dataFim) {
+                endpoint = `/api/ordens-compra/periodo?dataInicio=${dataInicio}&dataFim=${dataFim}`;
+                ordensCompra = await window.api.get(endpoint);
+            } else {
+                // Sem filtros específicos, carrega todos
+                ordensCompra = await window.api.get('/api/ordens-compra');
+            }
+
+            // Aplica filtros adicionais no frontend se necessário
+            ordensCompra = this.applyClientSideFilters(ordensCompra);
+
+            // Aplica ordenação
+            ordensCompra = this.applySorting(ordensCompra);
+
+            // Atualiza a tabela
+            this.ordemCompraManager.ordensCompra = ordensCompra;
+            this.ordemCompraManager.componentManager.renderTable(ordensCompra);
+            this.ordemCompraManager.componentManager.updatePaginationInfo(ordensCompra.length);
+
+        } catch (error) {
+            console.error('[FilterManager] Erro ao carregar dados filtrados:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Aplica filtros adicionais no lado do cliente
+     */
+    applyClientSideFilters(ordensCompra) {
+        const { valorMin, valorMax, dataInicio, dataFim } = this.currentFilters;
+        
+        return ordensCompra.filter(ordem => {
+            // Filtro de valor (se não foi aplicado no backend)
+            if (valorMin && parseFloat(ordem.valor) < parseFloat(valorMin)) {
+                return false;
+            }
+            if (valorMax && parseFloat(ordem.valor) > parseFloat(valorMax)) {
+                return false;
+            }
+
+            // Filtro de data (se não foi aplicado no backend)
+            if (dataInicio) {
+                const dataOrdem = new Date(ordem.dataOrdem);
+                const dataFiltroInicio = new Date(dataInicio);
+                if (dataOrdem < dataFiltroInicio) {
+                    return false;
+                }
+            }
+            if (dataFim) {
+                const dataOrdem = new Date(ordem.dataOrdem);
+                const dataFiltroFim = new Date(dataFim);
+                if (dataOrdem > dataFiltroFim) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }
+
+    /**
+     * Aplica ordenação aos dados
+     */
+    applySorting(ordensCompra) {
+        const { field, direction } = this.currentSort;
+        
+        return ordensCompra.sort((a, b) => {
+            let valueA = a[field];
+            let valueB = b[field];
+
+            // Tratamento especial para diferentes tipos de dados
+            if (field.includes('data') || field.includes('Data')) {
+                valueA = new Date(valueA);
+                valueB = new Date(valueB);
+            } else if (field === 'valor') {
+                valueA = parseFloat(valueA);
+                valueB = parseFloat(valueB);
+            } else if (typeof valueA === 'string') {
+                valueA = valueA.toLowerCase();
+                valueB = valueB.toLowerCase();
+            }
+
+            if (direction === 'asc') {
+                return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+            } else {
+                return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+            }
+        });
+    }
+
+    /**
+     * Manipula a ordenação da tabela
+     */
+    handleSort(field) {
+        // Se é o mesmo campo, inverte a direção
+        if (this.currentSort.field === field) {
+            this.currentSort.direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.currentSort.field = field;
+            this.currentSort.direction = 'asc';
+        }
+
+        console.log('[FilterManager] Ordenando por:', this.currentSort);
+
+        // Atualiza os ícones de ordenação
+        this.updateSortIcons();
+
+        // Aplica os filtros novamente com a nova ordenação
+        this.applyFilters();
+    }
+
+    /**
+     * Atualiza os ícones de ordenação na tabela
+     */
+    updateSortIcons() {
+        // Remove classes de ordenação de todos os headers
+        const sortableHeaders = document.querySelectorAll('.sortable');
+        sortableHeaders.forEach(header => {
+            header.classList.remove('sorted', 'desc');
+            const icon = header.querySelector('.sort-icon');
+            if (icon) {
+                icon.style.transform = '';
+                icon.style.opacity = '0.5';
+            }
+        });
+
+        // Adiciona classe ao header ativo
+        const activeHeader = document.querySelector(`[data-sort="${this.currentSort.field}"]`);
+        if (activeHeader) {
+            activeHeader.classList.add('sorted');
+            if (this.currentSort.direction === 'desc') {
+                activeHeader.classList.add('desc');
+            }
+            
+            const icon = activeHeader.querySelector('.sort-icon');
+            if (icon) {
+                icon.style.opacity = '1';
+                icon.style.transform = this.currentSort.direction === 'desc' ? 'rotate(180deg)' : '';
+            }
+        }
+    }
+
+    /**
+     * Limpa todos os filtros
+     */
+    async clearFilters() {
+        try {
+            // Limpa os campos do formulário
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterValorMin').value = '';
+            document.getElementById('filterValorMax').value = '';
+            document.getElementById('filterDataInicio').value = '';
+            document.getElementById('filterDataFim').value = '';
+
+            // Reseta os filtros internos
+            this.currentFilters = {
+                status: '',
+                valorMin: '',
+                valorMax: '',
+                dataInicio: '',
+                dataFim: ''
+            };
+
+            // Reseta a ordenação para o padrão
+            this.currentSort = {
+                field: 'id',
+                direction: 'asc'
+            };
+
+            // Recarrega todos os dados
+            await this.ordemCompraManager.loadOrdens();
+            
+            // Atualiza os ícones de ordenação
+            this.updateSortIcons();
+
+            notify.success('Filtros removidos com sucesso!');
+            
+        } catch (error) {
+            console.error('[FilterManager] Erro ao limpar filtros:', error);
+            notify.error('Erro ao limpar filtros. Tente novamente.');
+        }
+    }
+
+    /**
+     * Obtém o estado atual dos filtros
+     */
+    getFiltersState() {
+        return {
+            filters: { ...this.currentFilters },
+            sort: { ...this.currentSort }
+        };
+    }
+
+    /**
+     * Aplica filtros rápidos (para uso em outros componentes)
+     */
+    async applyQuickFilter(filterType, value) {
+        switch (filterType) {
+            case 'status':
+                document.getElementById('filterStatus').value = value;
+                break;
+            case 'today':
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('filterDataInicio').value = today;
+                document.getElementById('filterDataFim').value = today;
+                break;
+            case 'thisWeek':
+                const startOfWeek = new Date();
+                startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(endOfWeek.getDate() + 6);
+                
+                document.getElementById('filterDataInicio').value = startOfWeek.toISOString().split('T')[0];
+                document.getElementById('filterDataFim').value = endOfWeek.toISOString().split('T')[0];
+                break;
+        }
+        
+        await this.applyFilters();
+    }
+}
+
+// Exporta a classe para uso global
+window.FilterManager = FilterManager;

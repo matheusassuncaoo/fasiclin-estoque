@@ -207,12 +207,12 @@ public interface ItemOrdemCompraRepository extends JpaRepository<ItemOrdemCompra
      * Soma o valor total dos itens por ordem de compra.
      * 
      * <p>Consulta agregada para obter o valor total de uma ordem de compra.
-     * Agora utiliza o campo vlrTotal diretamente do banco de dados.</p>
+     * Calcula o valor total dinamicamente (quantidade × valor unitário).</p>
      * 
      * @param idOrdComp ID da ordem de compra
      * @return Valor total dos itens da ordem de compra
      */
-    @Query("SELECT COALESCE(SUM(i.vlrTotal), 0) FROM ItemOrdemCompra i WHERE i.idOrdComp = :idOrdComp")
+    @Query("SELECT COALESCE(SUM(i.qntd * i.valor), 0) FROM ItemOrdemCompra i WHERE i.idOrdComp = :idOrdComp")
     @QueryHints({
         @QueryHint(name = "org.hibernate.readOnly", value = "true"),
         @QueryHint(name = "org.hibernate.cacheable", value = "true"),

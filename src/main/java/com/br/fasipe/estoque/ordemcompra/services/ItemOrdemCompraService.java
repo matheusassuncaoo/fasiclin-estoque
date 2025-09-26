@@ -454,4 +454,73 @@ public class ItemOrdemCompraService {
         // Por enquanto, permitir deleção sempre
         // Futuras implementações podem incluir verificações de integridade referencial
     }
+    
+    /**
+     * Salva ou atualiza uma lista de itens para uma ordem de compra específica.
+     * 
+     * <p>Este método permite gerenciar todos os itens de uma ordem de compra de forma
+     * transacional. Itens existentes são atualizados e novos itens são criados.</p>
+     * 
+     * @param idOrdemCompra ID da ordem de compra
+     * @param itens Lista de itens para salvar/atualizar
+     * @return Lista de itens salvos/atualizados
+     * @throws IllegalArgumentException se parâmetros forem inválidos
+     * @throws EntityNotFoundException se ordem de compra não existir
+     */
+    @Transactional
+    public List<ItemOrdemCompra> salvarItensOrdem(@NotNull Integer idOrdemCompra, 
+                                                  @NotNull List<ItemOrdemCompra> itens) {
+        if (idOrdemCompra == null) {
+            throw new IllegalArgumentException("ID da ordem de compra não pode ser nulo");
+        }
+        
+        if (itens == null) {
+            throw new IllegalArgumentException("Lista de itens não pode ser nula");
+        }
+        
+        // Configura o ID da ordem de compra em todos os itens
+        itens.forEach(item -> {
+            item.setIdOrdComp(idOrdemCompra);
+            // Calcula valor total automaticamente
+            item.inicializarValorTotal();
+        });
+        
+        // Salva todos os itens
+        return itemOrdemCompraRepository.saveAll(itens);
+    }
+    
+    /**
+     * Remove todos os itens de uma ordem de compra e salva os novos itens.
+     * 
+     * <p>Operação transacional que substitui completamente os itens de uma ordem.</p>
+     * 
+     * @param idOrdemCompra ID da ordem de compra
+     * @param novosItens Lista de novos itens
+     * @return Lista de itens salvos
+     */
+    @Transactional
+    public List<ItemOrdemCompra> substituirItensOrdem(@NotNull Integer idOrdemCompra,
+                                                      @NotNull List<ItemOrdemCompra> novosItens) {
+        if (idOrdemCompra == null) {
+            throw new IllegalArgumentException("ID da ordem de compra não pode ser nulo");
+        }
+        
+        if (novosItens == null) {
+            throw new IllegalArgumentException("Lista de itens não pode ser nula");
+        }
+        
+        // Remove todos os itens existentes
+        List<ItemOrdemCompra> itensExistentes = findByIdOrdemCompra(idOrdemCompra);
+        itemOrdemCompraRepository.deleteAll(itensExistentes);
+        
+        // Configura os novos itens
+        novosItens.forEach(item -> {
+            item.setIdItemOrd(null); // Garante que será criado como novo
+            item.setIdOrdComp(idOrdemCompra);
+            item.inicializarValorTotal();
+        });
+        
+        // Salva os novos itens
+        return itemOrdemCompraRepository.saveAll(novosItens);
+    }
 }

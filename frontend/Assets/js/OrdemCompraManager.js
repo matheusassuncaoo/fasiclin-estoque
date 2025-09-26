@@ -10,6 +10,10 @@ class OrdemCompraManager {
         this.isLoading = false;
         this.cache = new Map();
         
+        // Inicializar managers
+        this.componentManager = null;
+        this.filterManager = null;
+        
         this.init();
     }
 
@@ -20,8 +24,24 @@ class OrdemCompraManager {
         console.log('[OrdemCompraManager] Inicializando...');
         
         try {
+            // Usar o componentsManager global se existir, senão criar um novo
+            if (typeof window !== 'undefined' && window.componentsManager) {
+                this.componentManager = window.componentsManager;
+                console.log('[OrdemCompraManager] Usando componentsManager global');
+            } else {
+                this.componentManager = new OrdemCompraComponentsManager();
+                console.log('[OrdemCompraManager] Criando nova instância de componentManager');
+            }
+            
             this.setupEventListeners();
             await this.loadInitialData();
+            
+            // Inicializar filter manager após carregar dados
+            if (typeof FilterManager !== 'undefined') {
+                this.filterManager = new FilterManager(this);
+            } else {
+                console.warn('[OrdemCompraManager] FilterManager não disponível');
+            }
             
             console.log('[OrdemCompraManager] Inicializado com sucesso');
         } catch (error) {
@@ -51,6 +71,10 @@ class OrdemCompraManager {
             this.handleDeleteOrdem(e.detail.id);
         });
 
+        document.addEventListener('ordemcompra:ordem:deactivate', (e) => {
+            this.handleDeactivateOrdem(e.detail.id, e.detail.credentials);
+        });
+
         document.addEventListener('ordemcompra:ordem:bulkDelete', (e) => {
             this.handleBulkDelete(e.detail.ids);
         });
@@ -62,6 +86,40 @@ class OrdemCompraManager {
         document.addEventListener('ordemcompra:pagination:change', () => {
             this.loadOrdens();
         });
+
+        // Event listeners para modal de informações
+        const btnInfoSistema = document.getElementById('btnInfoSistema');
+        const modalInfo = document.getElementById('modalInfo');
+        const btnCloseInfo = document.getElementById('btnCloseInfo');
+
+        if (btnInfoSistema && modalInfo) {
+            btnInfoSistema.addEventListener('click', () => {
+                this.updateInfoModalStats();
+                modalInfo.style.display = 'flex';
+            });
+        }
+
+        if (btnCloseInfo && modalInfo) {
+            btnCloseInfo.addEventListener('click', () => {
+                modalInfo.style.display = 'none';
+            });
+        }
+
+        if (modalInfo) {
+            modalInfo.addEventListener('click', (e) => {
+                if (e.target === modalInfo) {
+                    modalInfo.style.display = 'none';
+                }
+            });
+        }
+
+        // Event listener para exportação Excel
+        const btnExportarExcel = document.getElementById('btnExportarExcel');
+        if (btnExportarExcel) {
+            btnExportarExcel.addEventListener('click', () => {
+                this.exportToExcel();
+            });
+        }
     }
 
     // ============================================
@@ -91,7 +149,7 @@ class OrdemCompraManager {
         this.setLoading(true);
         
         try {
-            const params = componentsManager.getPaginationParams();
+            const params = this.componentManager ? this.componentManager.getPaginationParams() : {};
             
             // Buscar do backend
             const response = await apiManager.getOrdensCompra(params);
@@ -130,28 +188,44 @@ class OrdemCompraManager {
      */
     async createOrdem(ordemData) {
         this.setLoading(true);
-        componentsManager.showFormLoading(true);
+        if (this.componentManager) this.componentManager.showFormLoading(true);
 
         try {
+            console.log('[OrdemCompraManager] Iniciando criação de ordem:', ordemData);
+            
             // Criar no backend
             const novaOrdem = await apiManager.createOrdemCompra(ordemData);
+            console.log('[OrdemCompraManager] Ordem criada com sucesso:', novaOrdem);
+            
             notify.success('Ordem de compra criada com sucesso!');
             
             // Atualizar interface
             await this.loadOrdens();
-            componentsManager.closeModal();
+            if (this.componentManager) this.componentManager.closeModal();
             
         } catch (error) {
             console.error('[OrdemCompraManager] Erro ao criar ordem:', error);
             
-            if (error.message.includes('CORS') || error.message.includes('NetworkError')) {
-                notify.error('Erro de CORS: Configure o backend para permitir requisições do frontend');
+            let errorMessage = 'Erro desconhecido';
+            
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                errorMessage = 'Erro de conexão: Verifique se o backend está rodando em http://localhost:8080';
+            } else if (error.message.includes('CORS')) {
+                errorMessage = 'Erro de CORS: Configure o backend para permitir requisições do frontend';
+            } else if (error.message.includes('HTTP 400')) {
+                errorMessage = 'Dados inválidos: Verifique se todos os campos estão preenchidos corretamente';
+            } else if (error.message.includes('HTTP 422')) {
+                errorMessage = 'Erro de validação: Os dados não atendem aos critérios de negócio';
+            } else if (error.message.includes('HTTP 500')) {
+                errorMessage = 'Erro interno do servidor: Verifique os logs do backend';
             } else {
-                notify.error(`Erro ao criar ordem de compra: ${error.message}`);
+                errorMessage = error.message;
             }
+            
+            notify.error(`Erro ao criar ordem de compra: ${errorMessage}`);
         } finally {
             this.setLoading(false);
-            componentsManager.showFormLoading(false);
+            if (this.componentManager) this.componentManager.showFormLoading(false);
         }
     }
 
@@ -162,7 +236,7 @@ class OrdemCompraManager {
      */
     async updateOrdem(id, ordemData) {
         this.setLoading(true);
-        componentsManager.showFormLoading(true);
+        if (this.componentManager) this.componentManager.showFormLoading(true);
 
         try {
             // Atualizar no backend
@@ -171,7 +245,7 @@ class OrdemCompraManager {
             
             // Atualizar interface
             await this.loadOrdens();
-            componentsManager.closeModal();
+            if (this.componentManager) this.componentManager.closeModal();
             
         } catch (error) {
             console.error('[OrdemCompraManager] Erro ao atualizar ordem:', error);
@@ -183,7 +257,7 @@ class OrdemCompraManager {
             }
         } finally {
             this.setLoading(false);
-            componentsManager.showFormLoading(false);
+            if (this.componentManager) this.componentManager.showFormLoading(false);
         }
     }
 
@@ -200,7 +274,7 @@ class OrdemCompraManager {
             notify.success('Ordem de compra excluída com sucesso!');
             
             // Atualizar interface
-            componentsManager.selectedItems.delete(id);
+            if (this.componentManager) this.componentManager.selectedItems.delete(id);
             await this.loadOrdens();
             
         } catch (error) {
@@ -253,7 +327,7 @@ class OrdemCompraManager {
             }
 
             // Limpar seleções e atualizar interface
-            componentsManager.clearSelections();
+            if (this.componentManager) this.componentManager.clearSelections();
             await this.loadOrdens();
             
         } catch (error) {
@@ -314,7 +388,11 @@ class OrdemCompraManager {
         try {
             const ordem = await this.getOrdem(id);
             if (ordem) {
-                componentsManager.openModal('edit', ordem);
+                if (this.componentManager) {
+                    this.componentManager.openModal('edit', ordem);
+                } else {
+                    console.error('[OrdemCompraManager] ComponentManager não disponível');
+                }
             } else {
                 notify.error('Ordem de compra não encontrada');
             }
@@ -330,6 +408,60 @@ class OrdemCompraManager {
      */
     async handleDeleteOrdem(id) {
         await this.deleteOrdem(id);
+    }
+
+    /**
+     * Manipula desativação de ordem com autenticação
+     * @param {number} id - ID da ordem
+     * @param {Object} credentials - Credenciais de autenticação
+     */
+    async handleDeactivateOrdem(id, credentials) {
+        this.setLoading(true);
+
+        try {
+            console.log('[OrdemCompraManager] Iniciando remoção da ordem:', id);
+            
+            // Chamar API de remoção com autenticação
+            const result = await apiManager.deleteOrdemCompraWithAuth(id, credentials);
+            
+            console.log('[OrdemCompraManager] Ordem removida com sucesso:', result);
+            
+            notify.success('Ordem de compra removida com sucesso!');
+            
+            // Fechar modal de credenciais
+            if (this.componentManager) {
+                this.componentManager.closeCredentialsModal();
+            }
+            
+            // Atualizar lista
+            await this.loadOrdens();
+            
+        } catch (error) {
+            console.error('[OrdemCompraManager] Erro ao remover ordem:', error);
+            
+            let errorMessage = 'Erro desconhecido';
+            
+            if (error.message.includes('HTTP 401') || error.message.includes('Credenciais inválidas')) {
+                errorMessage = 'Credenciais inválidas: Verifique seu login e senha';
+            } else if (error.message.includes('HTTP 404')) {
+                errorMessage = 'Ordem de compra não encontrada';
+            } else if (error.message.includes('HTTP 422')) {
+                errorMessage = 'Esta ordem não pode ser removida (pode estar concluída)';
+            } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                errorMessage = 'Erro de conexão: Verifique se o backend está rodando';
+            } else {
+                errorMessage = error.message;
+            }
+            
+            notify.error(`Erro ao remover ordem: ${errorMessage}`);
+            
+            // Esconder loading no modal
+            if (this.componentManager) {
+                this.componentManager.showCredentialsLoading(false);
+            }
+        } finally {
+            this.setLoading(false);
+        }
     }
 
     /**
@@ -380,8 +512,10 @@ class OrdemCompraManager {
      * Renderiza as ordens na interface
      */
     renderOrdens() {
-        componentsManager.renderTable(this.ordensCompra);
-        componentsManager.updatePagination(this.ordensCompra.length);
+        if (this.componentManager) {
+            this.componentManager.renderTable(this.ordensCompra);
+            this.componentManager.updatePagination(this.ordensCompra.length);
+        }
     }
 
     /**
@@ -416,12 +550,17 @@ class OrdemCompraManager {
      * @param {Object} ordem - Dados da ordem
      */
     showOrdemDetails(ordem) {
-        const statusText = componentsManager.getStatusText(ordem.statusOrdemCompra);
-        const valorFormatado = componentsManager.formatCurrency(ordem.valor);
-        const dataPrevFormatada = componentsManager.formatDate(ordem.dataPrev);
-        const dataOrdemFormatada = componentsManager.formatDate(ordem.dataOrdem);
+        if (!this.componentManager) {
+            console.error('[OrdemCompraManager] ComponentManager não disponível para exibir detalhes');
+            return;
+        }
+        
+        const statusText = this.componentManager.getStatusText(ordem.statusOrdemCompra);
+        const valorFormatado = this.componentManager.formatCurrency(ordem.valor);
+        const dataPrevFormatada = this.componentManager.formatDate(ordem.dataPrev);
+        const dataOrdemFormatada = this.componentManager.formatDate(ordem.dataOrdem);
         const dataEntreFormatada = ordem.dataEntre ? 
-              componentsManager.formatDate(ordem.dataEntre) : 'Não informada';
+              this.componentManager.formatDate(ordem.dataEntre) : 'Não informada';
 
         notify.info(`
             <strong>Ordem de Compra #${ordem.id}</strong><br>
@@ -443,8 +582,8 @@ class OrdemCompraManager {
     setLoading(loading) {
         this.isLoading = loading;
         
-        if (loading) {
-            componentsManager.showTableLoading();
+        if (loading && this.componentManager) {
+            this.componentManager.showTableLoading();
         }
     }
 
@@ -452,9 +591,9 @@ class OrdemCompraManager {
      * Mostra estado de erro de conexão
      */
     showConnectionError() {
-        if (!componentsManager.elements.tableBody) return;
+        if (!this.componentManager || !this.componentManager.elements.tableBody) return;
 
-        componentsManager.elements.tableBody.innerHTML = `
+        this.componentManager.elements.tableBody.innerHTML = `
             <tr>
                 <td colspan="9" class="text-center">
                     <div class="empty-state" style="padding: 40px;">
@@ -510,7 +649,7 @@ class OrdemCompraManager {
     startPeriodicUpdate() {
         // Atualizar a cada 30 segundos se não estiver em uma operação
         setInterval(() => {
-            if (!this.isLoading && !componentsManager.isModalOpen()) {
+            if (!this.isLoading && this.componentManager && !this.componentManager.isModalOpen()) {
                 this.loadOrdens();
             }
         }, 30000);
@@ -554,40 +693,147 @@ class OrdemCompraManager {
     }
 
     /**
-     * Exporta dados para CSV
+     * Exporta dados para Excel (.xlsx)
      */
-    exportToCSV() {
+    exportToExcel() {
         if (this.ordensCompra.length === 0) {
             notify.warning('Nenhuma ordem para exportar');
             return;
         }
 
-        const headers = ['ID', 'Status', 'Valor', 'Data Prevista', 'Data da Ordem', 'Data de Entrega'];
-        const csvContent = [
-            headers.join(','),
-            ...this.ordensCompra.map(ordem => [
-                ordem.id,
-                ordem.statusOrdemCompra,
-                ordem.valor,
-                ordem.dataPrev,
-                ordem.dataOrdem,
-                ordem.dataEntre || ''
-            ].join(','))
-        ].join('\n');
+        try {
+            // Preparar dados para exportação
+            const exportData = this.ordensCompra.map(ordem => ({
+                'ID': ordem.id,
+                'Status': ordem.statusOrdemCompra,
+                'Valor (R$)': `R$ ${parseFloat(ordem.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                'Data Prevista': ordem.dataPrev ? new Date(ordem.dataPrev).toLocaleDateString('pt-BR') : '',
+                'Data da Ordem': ordem.dataOrdem ? new Date(ordem.dataOrdem).toLocaleDateString('pt-BR') : '',
+                'Data de Entrega': ordem.dataEntre ? new Date(ordem.dataEntre).toLocaleDateString('pt-BR') : 'Não entregue'
+            }));
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
+            // Criar workbook e worksheet
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+            // Configurar largura das colunas
+            const columnWidths = [
+                { wch: 8 },   // ID
+                { wch: 12 },  // Status
+                { wch: 15 },  // Valor
+                { wch: 15 },  // Data Prevista
+                { wch: 15 },  // Data da Ordem
+                { wch: 15 }   // Data de Entrega
+            ];
+            worksheet['!cols'] = columnWidths;
+
+            // Aplicar formatação ao cabeçalho
+            const headerStyle = {
+                font: { bold: true, color: { rgb: "FFFFFF" } },
+                fill: { fgColor: { rgb: "4472C4" } },
+                alignment: { horizontal: "center" }
+            };
+
+            // Aplicar estilo ao cabeçalho
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            for (let col = range.s.c; col <= range.e.c; col++) {
+                const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+                if (!worksheet[cellAddress]) continue;
+                worksheet[cellAddress].s = headerStyle;
+            }
+
+            // Adicionar worksheet ao workbook
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Ordens de Compra');
+
+            // Adicionar estatísticas em uma segunda planilha
+            const stats = this.getStatistics();
+            const statsData = [
+                { 'Métrica': 'Total de Ordens', 'Valor': stats.total },
+                { 'Métrica': 'Valor Total', 'Valor': `R$ ${stats.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+                { 'Métrica': 'Concluídas', 'Valor': stats.concluidas },
+                { 'Métrica': 'Pendentes', 'Valor': stats.pendentes },
+                { 'Métrica': 'Em Processamento', 'Valor': stats.processamento },
+                { 'Métrica': 'Canceladas', 'Valor': stats.canceladas },
+                { 'Métrica': 'Data de Exportação', 'Valor': new Date().toLocaleString('pt-BR') }
+            ];
+
+            const statsWorksheet = XLSX.utils.json_to_sheet(statsData);
+            statsWorksheet['!cols'] = [{ wch: 20 }, { wch: 25 }];
+            XLSX.utils.book_append_sheet(workbook, statsWorksheet, 'Estatísticas');
+
+            // Gerar nome do arquivo
+            const fileName = `ordens_compra_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+            // Baixar arquivo
+            XLSX.writeFile(workbook, fileName);
+
+            notify.success('Planilha Excel gerada com sucesso!');
+            
+        } catch (error) {
+            console.error('Erro ao exportar Excel:', error);
+            notify.error('Erro ao gerar planilha Excel');
+        }
+    }
+
+    /**
+     * Calcula estatísticas das ordens
+     */
+    getStatistics() {
+        const stats = {
+            total: this.ordensCompra.length,
+            valorTotal: 0,
+            concluidas: 0,
+            pendentes: 0,
+            processamento: 0,
+            canceladas: 0
+        };
+
+        this.ordensCompra.forEach(ordem => {
+            stats.valorTotal += parseFloat(ordem.valor) || 0;
+            
+            switch (ordem.statusOrdemCompra) {
+                case 'CONC':
+                    stats.concluidas++;
+                    break;
+                case 'PEND':
+                    stats.pendentes++;
+                    break;
+                case 'PROC':
+                    stats.processamento++;
+                    break;
+                case 'CANC':
+                    stats.canceladas++;
+                    break;
+            }
+        });
+
+        return stats;
+    }
+
+    /**
+     * Atualiza as estatísticas no modal de informações
+     */
+    updateInfoModalStats() {
+        const stats = this.getStatistics();
         
-        link.setAttribute('href', url);
-        link.setAttribute('download', `ordens_compra_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        notify.success('Dados exportados com sucesso!');
+        const elements = {
+            statTotalOrdens: document.getElementById('statTotalOrdens'),
+            statValorTotal: document.getElementById('statValorTotal'),
+            statConcluidas: document.getElementById('statConcluidas'),
+            statPendentes: document.getElementById('statPendentes'),
+            apiStatus: document.getElementById('apiStatus'),
+            lastUpdate: document.getElementById('lastUpdate')
+        };
+
+        if (elements.statTotalOrdens) elements.statTotalOrdens.textContent = stats.total;
+        if (elements.statValorTotal) elements.statValorTotal.textContent = `R$ ${stats.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+        if (elements.statConcluidas) elements.statConcluidas.textContent = stats.concluidas;
+        if (elements.statPendentes) elements.statPendentes.textContent = stats.pendentes;
+        if (elements.apiStatus) {
+            elements.apiStatus.textContent = 'Online';
+            elements.apiStatus.className = 'status-online';
+        }
+        if (elements.lastUpdate) elements.lastUpdate.textContent = new Date().toLocaleString('pt-BR');
     }
 }
 

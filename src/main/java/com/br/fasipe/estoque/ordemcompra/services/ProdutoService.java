@@ -57,7 +57,7 @@ public class ProdutoService {
         if (id == null) {
             throw new IllegalArgumentException("ID não pode ser nulo");
         }
-        return produtoRepository.findByIdProduto(id)
+        return produtoRepository.findById(id)
             .orElseThrow(() -> new EntityNotFoundException(
                 "Produto não encontrado com ID: " + id));
     }
@@ -95,7 +95,7 @@ public class ProdutoService {
             throw new IllegalArgumentException("Produto não pode ser nulo");
         }
         
-        if (obj.getIdProduto() != null) {
+        if (obj.getId() != null) {
             throw new IllegalArgumentException("ID deve ser nulo para criação de novo produto");
         }
         
@@ -140,12 +140,12 @@ public class ProdutoService {
             throw new IllegalArgumentException("Produto não pode ser nulo");
         }
         
-        if (obj.getIdProduto() == null) {
+        if (obj.getId() == null) {
             throw new IllegalArgumentException("ID é obrigatório para atualização");
         }
         
         // Verifica se o produto existe
-        Produto existingProduto = findById(obj.getIdProduto());
+        Produto existingProduto = findById(obj.getId());
         
         // Validações de negócio para atualização
         validateUpdateRules(obj, existingProduto);
@@ -203,7 +203,7 @@ public class ProdutoService {
             throw new IllegalArgumentException("Produto não pode ser nulo");
         }
         
-        deleteById(obj.getIdProduto());
+        deleteById(obj.getId());
     }
     
     /**
@@ -662,9 +662,9 @@ public class ProdutoService {
             !novoProduto.getCodBarras().equals(produtoExistente.getCodBarras())) {
             
             if (produtoRepository.findByCodigoBarras(novoProduto.getCodBarras()).isPresent()) {
-            throw new IllegalArgumentException(
-                "Já existe outro produto com o código de barras: " + novoProduto.getCodBarras());
-        }
+                throw new IllegalArgumentException(
+                    "Já existe outro produto com o código de barras: " + novoProduto.getCodBarras());
+            }
         }
         
         // Aplicar validações gerais
@@ -688,5 +688,45 @@ public class ProdutoService {
         // Validação: verificar se há dependências
         // Esta validação pode ser expandida para verificar se o produto está sendo usado
         // em ordens de compra, vendas, etc.
+    }
+
+    /**
+     * Busca produtos exato por nome (case-insensitive).
+     * 
+     * @param nome Nome exato do produto
+     * @return Lista de produtos com nome exato
+     */
+    public List<Produto> findByNome(@NotNull String nome) {
+        if (nome == null || nome.trim().isEmpty()) {
+            throw new IllegalArgumentException("Nome não pode ser nulo ou vazio");
+        }
+        return produtoRepository.findByNome(nome.trim());
+    }
+
+    /**
+     * Busca produtos que precisam de reposição (com estoque abaixo do ponto de pedido).
+     * 
+     * @return Lista de produtos que precisam de reposição
+     */
+    public List<Produto> findProdutosParaReposicao() {
+        return produtoRepository.findProdutosParaReposicao();
+    }
+
+    /**
+     * Busca produtos com estoque baixo (abaixo do mínimo mas acima do ponto crítico).
+     * 
+     * @return Lista de produtos com estoque baixo
+     */
+    public List<Produto> findProdutosEstoqueBaixo() {
+        return produtoRepository.findProdutosEstoqueBaixo();
+    }
+
+    /**
+     * Busca produtos com estoque crítico (no ponto de pedido ou abaixo).
+     * 
+     * @return Lista de produtos com estoque crítico
+     */
+    public List<Produto> findProdutosEstoqueCritico() {
+        return produtoRepository.findProdutosEstoqueCritico();
     }
 }

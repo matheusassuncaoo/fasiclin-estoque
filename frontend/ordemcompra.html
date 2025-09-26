@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sistema Fasiclin - Ordens de Compra</title>
     <link rel="shortcut icon" href="./Assets/icon/OrdemCompraIcone.ico" type="image/x-icon">
+    <link rel="stylesheet" href="./Assets/css/global.css" />
     <link rel="stylesheet" href="./Assets/css/index.css" />
     <link rel="stylesheet" href="./Assets/css/ordemcompra.css" />
     <link rel="stylesheet" href="./Assets/css/responsive.css" />
@@ -17,11 +18,94 @@
         <div class="header-content">
           <h1 class="page-title">Ordens de Compra</h1>
           <div class="header-info">
-            <i data-feather="help-circle"></i>
+            <button class="btn-info" id="btnInfoSistema" title="Informações do Sistema">
+              <i data-feather="help-circle"></i>
+            </button>
           </div>
         </div>
       </header>
 
+      <!-- Modal de Informações do Sistema -->
+      <div class="modal-overlay" id="modalInfo" style="display: none;">
+        <div class="modal modal-info">
+          <div class="modal-header">
+            <h2>
+              <i data-feather="info"></i>
+              Sistema de Ordens de Compra - Fasiclin
+            </h2>
+            <button class="modal-close" id="btnCloseInfo">
+              <i data-feather="x"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="info-sections">
+              <div class="info-section">
+                <h3><i data-feather="book-open"></i> Como usar</h3>
+                <ul>
+                  <li><strong>Nova Ordem:</strong> Clique em "Nova Ordem de Compra" para criar</li>
+                  <li><strong>Editar:</strong> Clique no ícone de edição na linha da ordem</li>
+                  <li><strong>Excluir:</strong> Use o checkbox e "Remover selecionados"</li>
+                  <li><strong>Filtrar:</strong> Use os filtros acima da tabela</li>
+                  <li><strong>Exportar:</strong> Clique em "Exportar Excel" para baixar planilha</li>
+                </ul>
+              </div>
+              
+              <div class="info-section">
+                <h3><i data-feather="bar-chart-2"></i> Estatísticas</h3>
+                <div class="stats-grid">
+                  <div class="stat-item">
+                    <span class="stat-label">Total de Ordens:</span>
+                    <span class="stat-value" id="statTotalOrdens">-</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Valor Total:</span>
+                    <span class="stat-value" id="statValorTotal">-</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Concluídas:</span>
+                    <span class="stat-value" id="statConcluidas">-</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Pendentes:</span>
+                    <span class="stat-value" id="statPendentes">-</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="info-section">
+                <h3><i data-feather="settings"></i> Status das Ordens</h3>
+                <div class="status-legend">
+                  <div class="status-item">
+                    <span class="status-badge status-pend">PEND</span>
+                    <span>Pendente</span>
+                  </div>
+                  <div class="status-item">
+                    <span class="status-badge status-proc">PROC</span>
+                    <span>Em Processamento</span>
+                  </div>
+                  <div class="status-item">
+                    <span class="status-badge status-conc">CONC</span>
+                    <span>Concluída</span>
+                  </div>
+                  <div class="status-item">
+                    <span class="status-badge status-canc">CANC</span>
+                    <span>Cancelada</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="info-section">
+                <h3><i data-feather="code"></i> Informações Técnicas</h3>
+                <p><strong>Versão:</strong> 1.0.2</p>
+                <p><strong>Última atualização:</strong> <span id="lastUpdate">-</span></p>
+                <p><strong>API Status:</strong> <span id="apiStatus" class="status-online">Online</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    
       <!-- Toolbar -->
       <div class="toolbar">
         <div class="toolbar-left">
@@ -29,9 +113,9 @@
             <i data-feather="plus"></i>
             Nova Ordem de Compra
           </button>
-          <button class="btn btn-secondary" id="btnImportarXML">
-            <i data-feather="upload"></i>
-            Importar XML
+          <button class="btn btn-success" id="btnExportarExcel">
+            <i data-feather="download"></i>
+            Exportar Excel
           </button>
           <button class="btn btn-danger" id="btnRemoverSelecionados">
             <i data-feather="trash-2"></i>
@@ -48,31 +132,30 @@
               <th class="checkbox-column">
                 <input type="checkbox" id="selectAll" />
               </th>
-              <th class="sortable" data-sort="codigo">
-                Código
+              <th class="sortable" data-sort="id">
+                ID
                 <i data-feather="chevron-up" class="sort-icon"></i>
               </th>
-              <th class="sortable" data-sort="data">
-                Data
+              <th class="sortable" data-sort="statusOrdemCompra">
+                Status
                 <i data-feather="chevron-up" class="sort-icon"></i>
               </th>
-              <th class="sortable" data-sort="notaFiscal">
-                Nota Fiscal
+              <th class="sortable" data-sort="valor">
+                Valor (R$)
                 <i data-feather="chevron-up" class="sort-icon"></i>
               </th>
-              <th class="sortable" data-sort="fornecedor">
-                Fornecedor
+              <th class="sortable" data-sort="dataPrev">
+                Data Prevista
                 <i data-feather="chevron-up" class="sort-icon"></i>
               </th>
-              <th class="sortable" data-sort="desconto">
-                Desconto R$
+              <th class="sortable" data-sort="dataOrdem">
+                Data Ordem
                 <i data-feather="chevron-up" class="sort-icon"></i>
               </th>
-              <th class="sortable" data-sort="total">
-                Total (R$)
+              <th class="sortable" data-sort="dataEntre">
+                Data Entrega
                 <i data-feather="chevron-up" class="sort-icon"></i>
               </th>
-              <th>Observação</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -113,83 +196,493 @@
     <div class="modal-overlay" id="modalOrdemCompra">
       <div class="modal">
         <div class="modal-header">
-          <h2 id="modalTitle">Cadastro de Ordem de Compra</h2>
+          <h2 id="modalTitle">
+            <i data-feather="shopping-cart"></i>
+            Nova Ordem de Compra
+          </h2>
           <button class="modal-close" id="btnCloseModal">
             <i data-feather="x"></i>
           </button>
         </div>
         
-        <form id="formOrdemCompra" class="modal-form">
-          <input type="hidden" id="id" name="id" />
+        <div class="modal-body">
+          <form id="formOrdemCompra" class="modal-form">
+            <input type="hidden" id="id" name="id" />
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="statusOrdemCompra">Status da Ordem:</label>
-              <select id="statusOrdemCompra" name="statusOrdemCompra" required>
-                <option value="">Selecione um status...</option>
-                <option value="PEND">Pendente</option>
-                <option value="ANDA">Em Andamento</option>
-                <option value="CONC">Concluído</option>
-              </select>
-            </div>
-          </div>
+            <div class="form-content">
+              <div class="form-section">
+                <h3><i data-feather="info"></i> Informações da Ordem</h3>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="statusOrdemCompra">
+                      <i data-feather="flag"></i>
+                      Status da Ordem *
+                    </label>
+                    <select id="statusOrdemCompra" name="statusOrdemCompra" required>
+                      <option value="">Selecione um status...</option>
+                      <option value="PEND" selected>Pendente</option>
+                      <option value="PROC">Em Processamento</option>
+                      <option value="CONC">Concluída</option>
+                      <option value="CANC">Cancelada</option>
+                    </select>
+                  </div>
+                </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="valor">Valor Total (R$):</label>
-              <input
-                type="number"
-                id="valor"
-                name="valor"
-                min="0.01"
-                step="0.01"
-                placeholder="Ex: 1500.50"
-                required
-              />
-            </div>
-          </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="dataPrev">
+                      <i data-feather="calendar"></i>
+                      Data Prevista de Entrega *
+                    </label>
+                    <input type="date" id="dataPrev" name="dataPrev" required />
+                    <small class="form-help">Data estimada para recebimento</small>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="dataOrdem">
+                      <i data-feather="clock"></i>
+                      Data da Ordem *
+                    </label>
+                    <input type="date" id="dataOrdem" name="dataOrdem" required readonly />
+                    <small class="form-help">Data atual (automática)</small>
+                  </div>
+                </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="dataPrev">Data Prevista:</label>
-              <input type="date" id="dataPrev" name="dataPrev" required />
-            </div>
-            
-            <div class="form-group">
-              <label for="dataOrdem">Data da Ordem:</label>
-              <input type="date" id="dataOrdem" name="dataOrdem" required />
-            </div>
-          </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="valorInicial">
+                      <i data-feather="dollar-sign"></i>
+                      Valor Inicial (Estimado)
+                    </label>
+                    <input 
+                      type="number" 
+                      id="valorInicial" 
+                      name="valorInicial" 
+                      step="0.01" 
+                      min="0"
+                      placeholder="0,00"
+                    />
+                    <small class="form-help">Valor estimativo inicial (opcional)</small>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="dataEntre">
+                      <i data-feather="truck"></i>
+                      Data de Entrega
+                    </label>
+                    <input type="date" id="dataEntre" name="dataEntre" />
+                    <small class="form-help">Data real de entrega (se conhecida)</small>
+                  </div>
+                </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="dataEntre">Data de Entrega:</label>
-              <input type="date" id="dataEntre" name="dataEntre" />
-            </div>
-          </div>
+                <div class="form-row">
+                  <div class="form-group full-width">
+                    <label for="observacoesOrdem">
+                      <i data-feather="file-text"></i>
+                      Observações
+                    </label>
+                    <textarea 
+                      id="observacoesOrdem" 
+                      name="observacoesOrdem" 
+                      rows="4" 
+                      placeholder="Informações adicionais sobre a ordem de compra..."
+                    ></textarea>
+                  </div>
+                </div>
 
-          <div class="modal-actions">
-            <button type="submit" class="btn btn-primary">Salvar</button>
-            <button type="button" class="btn btn-secondary" id="btnCancelModal">Cancelar</button>
-          </div>
-        </form>
+                <div class="form-info-box">
+                  <div class="info-content">
+                    <i data-feather="info"></i>
+                    <div>
+                      <strong>Próximo passo:</strong> Após criar a ordem de compra, você poderá adicionar os itens/produtos através da ação "Gerenciar Itens" na tabela.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" id="btnCancelModal">
+                <i data-feather="x"></i> Cancelar
+              </button>
+              
+              <button type="submit" class="btn btn-success" id="btnSalvarOrdem">
+                <i data-feather="check"></i> Criar Ordem de Compra
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
+
+    <!-- Modal de Visualização da Ordem -->
+    <div class="modal-overlay" id="modalViewOrdem" style="display: none;">
+      <div class="modal modal-view">
+        <div class="modal-header">
+          <h2>
+            <i data-feather="eye"></i>
+            Detalhes da Ordem de Compra
+          </h2>
+          <button class="modal-close" id="btnCloseViewModal">
+            <i data-feather="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="view-sections">
+            <div class="view-section">
+              <h3><i data-feather="hash"></i> Informações Básicas</h3>
+              <div class="info-grid">
+                <div class="info-item">
+                  <label>ID da Ordem:</label>
+                  <span id="viewId" class="value">-</span>
+                </div>
+                <div class="info-item">
+                  <label>Status:</label>
+                  <span id="viewStatus" class="value status-badge">-</span>
+                </div>
+                <div class="info-item">
+                  <label>Valor Total:</label>
+                  <span id="viewValor" class="value currency">-</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="view-section">
+              <h3><i data-feather="calendar"></i> Datas</h3>
+              <div class="info-grid">
+                <div class="info-item">
+                  <label>Data da Ordem:</label>
+                  <span id="viewDataOrdem" class="value">-</span>
+                </div>
+                <div class="info-item">
+                  <label>Data Prevista:</label>
+                  <span id="viewDataPrev" class="value">-</span>
+                </div>
+                <div class="info-item">
+                  <label>Data de Entrega:</label>
+                  <span id="viewDataEntre" class="value">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-primary" id="btnEditFromView">
+            <i data-feather="edit-2"></i> Editar
+          </button>
+          <button type="button" class="btn btn-secondary" id="btnCloseViewModalBtn">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Credenciais para Desativação -->
+    <div class="modal-overlay" id="modalCredentials" style="display: none;">
+      <div class="modal modal-credentials">
+        <div class="modal-header">
+          <h2>
+            <i data-feather="shield"></i>
+            Confirmação de Remoção
+          </h2>
+          <button class="modal-close" id="btnCloseCredentials">
+            <i data-feather="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="credentials-info">
+            <p><strong>Atenção:</strong> Esta ação irá remover permanentemente a ordem de compra selecionada.</p>
+            <p>Por favor, confirme sua identidade para prosseguir:</p>
+          </div>
+
+          <form id="credentialsForm" class="credentials-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="credentialsLogin">
+                  <i data-feather="user"></i>
+                  Login *
+                </label>
+                <input 
+                  type="text" 
+                  id="credentialsLogin" 
+                  name="login" 
+                  required 
+                  autocomplete="username"
+                  placeholder="Digite seu login"
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="credentialsPassword">
+                  <i data-feather="lock"></i>
+                  Senha *
+                </label>
+                <input 
+                  type="password" 
+                  id="credentialsPassword" 
+                  name="senha" 
+                  required 
+                  autocomplete="current-password"
+                  placeholder="Digite sua senha"
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="deactivationReason">
+                  <i data-feather="file-text"></i>
+                  Motivo da remoção
+                </label>
+                <textarea 
+                  id="deactivationReason" 
+                  name="motivo" 
+                  rows="3"
+                  placeholder="Descreva o motivo da remoção (opcional)"
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="credentials-warning">
+              <i data-feather="alert-triangle"></i>
+              <span>Esta ação não pode ser desfeita. A ordem será removida permanentemente.</span>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelDeactivation">
+            <i data-feather="x"></i>
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-danger" id="btnConfirmDeactivation" form="credentialsForm">
+            <i data-feather="trash-2"></i>
+            Confirmar Remoção
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Gerenciamento de Itens -->
+    <div class="modal-overlay-modern" id="modalItens" style="display: none;">
+      <div class="modal-modern modal-large-modern modal-itens">
+        <div class="modal-header-modern">
+          <h3 class="modal-title-modern" id="modalItensTitle">
+            <i data-feather="package"></i>
+            Gerenciar Itens da Ordem #<span id="ordemNumero">--</span>
+          </h3>
+          <button class="modal-close-modern" id="btnCloseItens" title="Fechar Modal">
+            <i data-feather="x"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body-modern">
+          <div class="modal-content-modern">
+          <!-- Informações da Ordem -->
+          <div class="ordem-info">
+            <div class="info-grid">
+              <div class="info-item">
+                <label>Status:</label>
+                <span id="ordemStatus" class="status-badge">-</span>
+              </div>
+              <div class="info-item">
+                <label>Data Prevista:</label>
+                <span id="ordemDataPrev">-</span>
+              </div>
+              <div class="info-item">
+                <label>Valor Atual:</label>
+                <span id="ordemValorAtual" class="currency">R$ 0,00</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formulário para Adicionar Item -->
+          <div class="add-item-section">
+            <h3><i data-feather="plus-circle"></i> Adicionar Item à Ordem</h3>
+            
+            <form class="add-item-form" onsubmit="return false;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="produtoSelect">
+                    <i data-feather="box"></i>
+                    Produto *
+                  </label>
+                  <select id="produtoSelect" required class="form-control">
+                    <option value="">Carregando produtos...</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="quantidadeInput">
+                    <i data-feather="hash"></i>
+                    Quantidade *
+                  </label>
+                  <input 
+                    type="number" 
+                    id="quantidadeInput" 
+                    class="form-control"
+                    min="1" 
+                    step="1" 
+                    placeholder="Ex: 10"
+                    required 
+                    autocomplete="off"
+                  />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="precoUnitarioInput">
+                    <i data-feather="dollar-sign"></i>
+                    Preço Unitário *
+                  </label>
+                  <input 
+                    type="number" 
+                    id="precoUnitarioInput" 
+                    class="form-control"
+                    min="0" 
+                    step="0.01" 
+                    placeholder="Ex: 25.50"
+                    required 
+                    autocomplete="off"
+                  />
+                </div>
+                
+                <div class="form-group">
+                  <label for="valorTotalItem">
+                    <i data-feather="calculator"></i>
+                    Valor Total
+                  </label>
+                  <input 
+                    type="text" 
+                    id="valorTotalItem" 
+                    class="form-control readonly-field"
+                    readonly 
+                    placeholder="R$ 0,00"
+                    tabindex="-1"
+                  />
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" id="btnAdicionarItem" class="btn btn-success btn-add-item">
+                  <i data-feather="plus"></i>
+                  <span>Adicionar Item</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Lista de Itens Adicionados -->
+          <div class="items-list-section">
+            <h3>
+              <i data-feather="list"></i> 
+              <span>Itens da Ordem</span>
+              <span class="items-count" id="itemsCountBadge">0 itens</span>
+            </h3>
+            
+            <div class="items-container">
+              <div class="items-table-wrapper">
+                <div class="items-table">
+                  <table class="table table-striped">
+                    <thead>
+                      <tr>
+                        <th>Produto</th>
+                        <th>Qtd</th>
+                        <th>Preço Unit.</th>
+                        <th>Total</th>
+                        <th class="actions-column">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody id="itensTableBody">
+                      <tr class="empty-row">
+                        <td colspan="5" class="text-center">
+                          <div class="empty-state">
+                            <i data-feather="package" class="empty-icon"></i>
+                            <p class="empty-message">Nenhum item adicionado ainda</p>
+                            <small class="empty-hint">Use o formulário acima para adicionar produtos à ordem</small>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Resumo Financeiro -->
+              <div class="financial-summary">
+                <div class="summary-header">
+                  <i data-feather="calculator"></i>
+                  <span>Resumo Financeiro</span>
+                </div>
+                <div class="summary-content">
+                  <div class="summary-row">
+                    <span class="summary-label">
+                      <i data-feather="hash"></i>
+                      Quantidade de Itens:
+                    </span>
+                    <span class="summary-value" id="totalItens">0</span>
+                  </div>
+                  <div class="summary-row">
+                    <span class="summary-label">
+                      <i data-feather="dollar-sign"></i>
+                      Subtotal:
+                    </span>
+                    <span class="summary-value" id="subtotalOrdem">R$ 0,00</span>
+                  </div>
+                  <div class="summary-row total">
+                    <span class="summary-label">
+                      <i data-feather="trending-up"></i>
+                      Total da Ordem:
+                    </span>
+                    <span class="summary-value" id="totalOrdem">R$ 0,00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-footer">
+          <div class="footer-info">
+            <i data-feather="info"></i>
+            <small>Os itens serão salvos permanentemente na ordem de compra</small>
+          </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer-modern">
+          <button type="button" class="btn-modern btn-secondary-modern" id="btnCancelarItens">
+            <i data-feather="x"></i>
+            <span>Cancelar</span>
+          </button>
+          
+          <button type="button" class="btn-modern btn-primary-modern" id="btnSalvarItens">
+            <i data-feather="check"></i>
+            <span>Salvar Itens</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Feather Icons -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.2/feather.min.js"></script>
+    
+    <!-- SheetJS para exportação Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <!-- Scripts do projeto -->
     <script src="./Assets/js/ApiManager.js" defer></script>
     <script src="./Assets/js/NotificationManager.js" defer></script>
+    <script src="./Assets/js/FilterManager.js" defer></script>
     <script src="./Assets/js/OrdemCompraComponentsManager.js" defer></script>
     <script src="./Assets/js/OrdemCompraManager.js" defer></script>
     
     <script>
       // Inicializar ícones e aplicação
       feather.replace();
-      
-      
-
     </script>
   </body>
 </html>

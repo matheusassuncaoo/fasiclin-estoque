@@ -31,7 +31,7 @@ import lombok.NoArgsConstructor;
  * - idProduto: ID do produto
  * - qntd: Quantidade do produto
  * - valor: Valor unitário do produto
- * - vlrTotal: Valor total do item (quantidade × valor unitário)
+ * - vlrTotal: Valor total calculado dinamicamente (quantidade × valor unitário)
  * - dataVenc: Data de vencimento do item
  * 
  * @author Sistema Fasiclin
@@ -98,14 +98,8 @@ public class ItemOrdemCompra {
     @Column(name = "DATAVENC", nullable = false)
     private LocalDate dataVenc;
 
-    /**
-     * Valor total do item (quantidade × valor unitário).
-     * Campo calculado automaticamente com precisão de 10 dígitos e 2 casas decimais.
-     */
-    @DecimalMin(value = "0.00", message = "Valor total deve ser maior ou igual a zero")
-    @Digits(integer = 8, fraction = 2, message = "Valor total deve ter no máximo 8 dígitos inteiros e 2 decimais")
-    @Column(name = "VLR_TOTAL", nullable = false, precision = 10, scale = 2)
-    private BigDecimal vlrTotal;
+    // Campo vlrTotal removido - não existe no banco
+    // Valor total será calculado dinamicamente quando necessário
 
 
 
@@ -118,12 +112,19 @@ public class ItemOrdemCompra {
      */
     public BigDecimal calcularValorTotal() {
         if (qntd != null && valor != null) {
-            BigDecimal total = valor.multiply(BigDecimal.valueOf(qntd));
-            this.vlrTotal = total; // Atualiza o campo vlrTotal
-            return total;
+            return valor.multiply(BigDecimal.valueOf(qntd));
         }
-        this.vlrTotal = BigDecimal.ZERO;
         return BigDecimal.ZERO;
+    }
+
+    /**
+     * Getter para valor total calculado dinamicamente.
+     * Mantém compatibilidade com código existente.
+     * 
+     * @return Valor total do item
+     */
+    public BigDecimal getVlrTotal() {
+        return calcularValorTotal();
     }
 
     /**
@@ -184,10 +185,11 @@ public class ItemOrdemCompra {
 
     /**
      * Inicializa o valor total baseado na quantidade e valor atual.
-     * Método útil para garantir que o valor total esteja sempre atualizado.
+     * Método mantido para compatibilidade - valor é calculado dinamicamente.
      */
     public void inicializarValorTotal() {
-        calcularValorTotal();
+        // Método mantido para compatibilidade
+        // O valor total é calculado dinamicamente via getVlrTotal()
     }
 
 

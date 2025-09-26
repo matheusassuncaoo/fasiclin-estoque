@@ -9,7 +9,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.FutureOrPresent;
 
@@ -39,10 +38,8 @@ public class OrdemCompra {
     @Column(name = "STATUSORD", nullable = false)
     private StatusOrdemCompra statusOrdemCompra;
 
-    @NotNull(message = "Valor da ordem de compra é obrigatório")
-    @Positive(message = "Valor deve ser positivo")
     @Column(name = "VALOR", nullable = false, precision = 10, scale = 2)
-    private BigDecimal valor;
+    private BigDecimal valor = BigDecimal.ZERO;
 
     @NotNull(message = "Data prevista é obrigatória")
     @FutureOrPresent(message = "Data prevista deve ser hoje ou no futuro")
@@ -54,13 +51,13 @@ public class OrdemCompra {
     @Column(name = "DATAORDEM", nullable = false)
     private LocalDate dataOrdem;
 
-    @NotNull(message = "Data de entrega é obrigatória")
-    @Column(name = "DATAENTRE", nullable = false)
+    @Column(name = "DATAENTRE", nullable = true)
     private LocalDate dataEntre;
 
     public enum StatusOrdemCompra {
         PEND,
-        ANDA,
-        CONC
+        PROC,
+        CONC,
+        CANC
     }
 }

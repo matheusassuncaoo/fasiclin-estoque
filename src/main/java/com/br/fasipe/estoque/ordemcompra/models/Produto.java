@@ -23,25 +23,27 @@ import java.math.BigDecimal;
 /**
  * Entidade que representa um produto no sistema.
  * 
- * Esta classe mapeia a tabela PRODUTO do banco de dados e contém
+ * <p>Esta classe mapeia a tabela PRODUTO do banco de dados MySQL e contém
  * informações completas sobre produtos, incluindo dados básicos,
- * controle de estoque e configurações de armazenamento.
+ * controle de estoque e configurações de armazenamento.</p>
  * 
- * Campos principais:
- * - idProduto: Identificador único do produto
- * - nome: Nome do produto
- * - descricao: Descrição detalhada
- * - idAlmox: ID do almoxarifado (opcional)
- * - idUnMedi: ID da unidade de medida
- * - codBarras: Código de barras (opcional)
- * - tempIdeal: Temperatura ideal de armazenamento (opcional)
- * - stqMax: Estoque máximo
- * - stqMin: Estoque mínimo
- * - pntPedido: Ponto de pedido
+ * <p><strong>Estrutura da tabela PRODUTO:</strong></p>
+ * <ul>
+ *   <li><strong>IDPRODUTO:</strong> INT PRIMARY KEY AUTO_INCREMENT</li>
+ *   <li><strong>NOME:</strong> VARCHAR(50) NOT NULL</li>
+ *   <li><strong>DESCRICAO:</strong> VARCHAR(250) NOT NULL</li>
+ *   <li><strong>ID_ALMOX:</strong> INT (opcional)</li>
+ *   <li><strong>ID_UNMEDI:</strong> INT NOT NULL</li>
+ *   <li><strong>CODBARRAS:</strong> VARCHAR(250) (opcional)</li>
+ *   <li><strong>TEMPIDEAL:</strong> DECIMAL(3,1) (opcional)</li>
+ *   <li><strong>STQMAX:</strong> INT NOT NULL</li>
+ *   <li><strong>STQMIN:</strong> INT NOT NULL</li>
+ *   <li><strong>PNTPEDIDO:</strong> INT NOT NULL</li>
+ * </ul>
  * 
- * @author Sistema Fasiclin
+ * @author Sistema Fasiclin - Módulo Estoque
  * @version 1.0
- * @since 2024
+ * @since 2025
  */
 @Entity
 @Table(name = "PRODUTO")
@@ -50,18 +52,20 @@ import java.math.BigDecimal;
 @Data
 public class Produto {
 
+    public static final String TABLE_NAME = "PRODUTO";
+
     /**
      * Identificador único do produto.
-     * Chave primária auto-incrementada.
+     * <p><strong>Coluna do banco:</strong> IDPRODUTO (INT, PRIMARY KEY, AUTO_INCREMENT)</p>
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "IDPRODUTO")
-    private Integer idProduto;
+    private Integer id;
 
     /**
      * Nome do produto.
-     * Campo obrigatório com até 50 caracteres.
+     * <p><strong>Coluna do banco:</strong> NOME (VARCHAR(50), NOT NULL)</p>
      */
     @NotBlank(message = "Nome do produto é obrigatório")
     @Size(max = 50, message = "Nome deve ter no máximo 50 caracteres")
@@ -70,7 +74,7 @@ public class Produto {
 
     /**
      * Descrição detalhada do produto.
-     * Campo obrigatório com até 250 caracteres.
+     * <p><strong>Coluna do banco:</strong> DESCRICAO (VARCHAR(250), NOT NULL)</p>
      */
     @NotBlank(message = "Descrição do produto é obrigatória")
     @Size(max = 250, message = "Descrição deve ter no máximo 250 caracteres")
@@ -79,14 +83,14 @@ public class Produto {
 
     /**
      * ID do almoxarifado onde o produto é armazenado.
-     * Campo opcional.
+     * <p><strong>Coluna do banco:</strong> ID_ALMOX (INT, opcional)</p>
      */
     @Column(name = "ID_ALMOX")
     private Integer idAlmox;
 
     /**
      * ID da unidade de medida do produto.
-     * Campo obrigatório que define como o produto é medido/contado.
+     * <p><strong>Coluna do banco:</strong> ID_UNMEDI (INT, NOT NULL)</p>
      */
     @NotNull(message = "ID da unidade de medida é obrigatório")
     @Column(name = "ID_UNMEDI", nullable = false)
@@ -94,7 +98,7 @@ public class Produto {
 
     /**
      * Código de barras do produto.
-     * Campo opcional com até 250 caracteres.
+     * <p><strong>Coluna do banco:</strong> CODBARRAS (VARCHAR(250), opcional)</p>
      */
     @Size(max = 250, message = "Código de barras deve ter no máximo 250 caracteres")
     @Column(name = "CODBARRAS", length = 250)
@@ -102,7 +106,7 @@ public class Produto {
 
     /**
      * Temperatura ideal de armazenamento em graus Celsius.
-     * Campo opcional com precisão de 3 dígitos e 1 casa decimal.
+     * <p><strong>Coluna do banco:</strong> TEMPIDEAL (DECIMAL(3,1), opcional)</p>
      */
     @DecimalMax(value = "99.9", message = "Temperatura ideal deve ser no máximo 99.9°C")
     @DecimalMin(value = "-99.9", message = "Temperatura ideal deve ser no mínimo -99.9°C")
@@ -112,7 +116,7 @@ public class Produto {
 
     /**
      * Estoque máximo permitido.
-     * Campo obrigatório que define o limite superior de estoque.
+     * <p><strong>Coluna do banco:</strong> STQMAX (INT, NOT NULL)</p>
      */
     @NotNull(message = "Estoque máximo é obrigatório")
     @Min(value = 1, message = "Estoque máximo deve ser maior que zero")
@@ -121,7 +125,7 @@ public class Produto {
 
     /**
      * Estoque mínimo permitido.
-     * Campo obrigatório que define o limite inferior de estoque.
+     * <p><strong>Coluna do banco:</strong> STQMIN (INT, NOT NULL)</p>
      */
     @NotNull(message = "Estoque mínimo é obrigatório")
     @Min(value = 0, message = "Estoque mínimo deve ser maior ou igual a zero")
@@ -130,7 +134,7 @@ public class Produto {
 
     /**
      * Ponto de pedido.
-     * Campo obrigatório que define quando fazer novo pedido.
+     * <p><strong>Coluna do banco:</strong> PNTPEDIDO (INT, NOT NULL)</p>
      */
     @NotNull(message = "Ponto de pedido é obrigatório")
     @Min(value = 0, message = "Ponto de pedido deve ser maior ou igual a zero")
