@@ -18,6 +18,17 @@ class ApiManager {
     this.retryDelay = 1000; // 1 segundo
   }
 
+  // Monta header de Basic Auth a partir de login e senha
+  buildBasicAuthHeader(login, senha) {
+    if (!login || !senha) return {};
+    try {
+      const token = btoa(`${login}:${senha}`);
+      return { Authorization: `Basic ${token}` };
+    } catch (_) {
+      return {};
+    }
+  }
+
   /**
    * Método genérico para fazer requisições HTTP
    * @param {string} endpoint - Endpoint da API
@@ -36,7 +47,7 @@ class ApiManager {
     };
 
     // Adicionar body apenas para métodos que suportam
-    if (config.method !== "GET" && config.method !== "DELETE" && options.body) {
+    if (config.method !== "GET" && options.body) {
       config.body =
         typeof options.body === "string"
           ? options.body
@@ -64,7 +75,22 @@ class ApiManager {
 
         // Verificar se a resposta é válida
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          // Tentar obter mensagem detalhada do backend
+          let serverMessage = "";
+          try {
+            const ct = response.headers.get("content-type");
+            if (ct && ct.includes("application/json")) {
+              const body = await response.json();
+              // procurar campos comuns de erro
+              serverMessage = body?.message || body?.error || JSON.stringify(body);
+            } else {
+              serverMessage = await response.text();
+            }
+          } catch (_) {
+            // ignora falha no parse
+          }
+          const msgSuffix = serverMessage ? ` - ${serverMessage}` : "";
+          throw new Error(`HTTP ${response.status}: ${response.statusText}${msgSuffix}`);
         }
 
         // Tentar parsear JSON, se não conseguir retornar texto
@@ -78,6 +104,9 @@ class ApiManager {
         }
 
         console.log(`[ApiManager] Sucesso: ${config.method} ${url}`, data);
+        
+
+        
         return data;
       } catch (error) {
         lastError = error;
@@ -177,10 +206,11 @@ class ApiManager {
    * @returns {Promise<Object>} - Ordem de compra criada
    */
   async createOrdemCompra(ordemCompra) {
-    this.validateOrdemCompra(ordemCompra);
+    const payload = this.sanitizeOrdemCompraPayload(ordemCompra, true);
+    this.validateOrdemCompra(payload);
     return await this.makeRequest("/ordens-compra", {
       method: "POST",
-      body: ordemCompra,
+      body: payload,
     });
   }
 
@@ -194,11 +224,22 @@ class ApiManager {
     if (!id) {
       throw new Error("ID da ordem de compra é obrigatório para atualização");
     }
-    this.validateOrdemCompra(ordemCompra, false);
-    return await this.makeRequest(`/ordens-compra/${id}`, {
+    
+    const payload = this.sanitizeOrdemCompraPayload(ordemCompra, false);
+    
+    // Garantir que o ID esteja presente no corpo para o backend validar
+    if (payload.id === undefined || payload.id === null) {
+      payload.id = id;
+    }
+    
+    this.validateOrdemCompra(payload, false);
+    
+    const resultado = await this.makeRequest(`/ordens-compra/${id}`, {
       method: "PUT",
-      body: ordemCompra,
+      body: payload,
     });
+    
+    return resultado;
   }
 
   /**
@@ -211,6 +252,26 @@ class ApiManager {
       throw new Error("ID da ordem de compra é obrigatório para remoção");
     }
     return await this.makeRequest(`/ordens-compra/${id}`, { method: "DELETE" });
+  }
+
+  /**
+   * Remove uma ordem de compra com autenticação básica (login/senha)
+   * @param {number} id - ID da ordem de compra
+   * @param {{login:string, senha:string, motivo?:string}} credentials - Credenciais
+   */
+  async deleteOrdemCompraWithAuth(id, credentials = {}) {
+    if (!id) throw new Error("ID da ordem de compra é obrigatório para remoção");
+
+    const body = {
+      login: credentials.login,
+      senha: credentials.senha,
+      motivo: credentials.motivo,
+    };
+
+    return await this.makeRequest(`/ordens-compra/${id}/authenticated`, {
+      method: "DELETE",
+      body,
+    });
   }
 
   /**
@@ -241,6 +302,28 @@ class ApiManager {
   }
 
   /**
+   * Remove múltiplas ordens de compra com autenticação
+   * @param {Array<number>} ids
+   * @param {{login:string, senha:string, motivo?:string}} credentials
+   */
+  async deleteMultipleOrdensCompraWithAuth(ids, credentials = {}) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new Error("Array de IDs é obrigatório e não pode estar vazio");
+    }
+    const batchSize = 5;
+    const results = [];
+    for (let i = 0; i < ids.length; i += batchSize) {
+      const batch = ids.slice(i, i + batchSize);
+      const batchPromises = batch.map((id) =>
+        this.deleteOrdemCompraWithAuth(id, credentials).catch((error) => ({ id, error }))
+      );
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults);
+    }
+    return results;
+  }
+
+  /**
    * Valida os dados de uma ordem de compra
    * @param {Object} ordemCompra - Dados a serem validados
    * @param {boolean} isCreate - Se é uma criação (true) ou atualização (false)
@@ -252,12 +335,11 @@ class ApiManager {
 
     const requiredFields = [
       "statusOrdemCompra",
-      "valor",
       "dataPrev",
       "dataOrdem",
     ];
-    // Aceitar também 'PROC' (processamento) e 'CANC' (cancelada) para compatibilidade com UI
-    const validStatuses = ["PEND", "ANDA", "CONC", "PROC", "CANC"];
+    // Enum válido no backend: PEND, PROC, CONC, CANC
+    const validStatuses = ["PEND", "PROC", "CONC", "CANC"];
 
     // Validar campos obrigatórios
     for (const field of requiredFields) {
@@ -273,19 +355,84 @@ class ApiManager {
       );
     }
 
-    // Validar valor
-    const valor = parseFloat(ordemCompra.valor);
-    if (isNaN(valor) || valor < 0) {
-      throw new Error("Valor deve ser um número maior ou igual a zero");
+    // Validar valor apenas se informado (backend permite null)
+    if (ordemCompra.valor !== undefined && ordemCompra.valor !== null) {
+      const valor = parseFloat(ordemCompra.valor);
+      if (isNaN(valor) || valor <= 0) {
+        throw new Error("Valor deve ser um número maior que zero quando informado");
+      }
     }
 
     // Validar datas
     this.validateDate(ordemCompra.dataPrev, "Data prevista");
     this.validateDate(ordemCompra.dataOrdem, "Data da ordem");
 
+    // Data prevista não pode ser anterior à data da ordem
+    const dPrev = new Date(ordemCompra.dataPrev);
+    const dOrdem = new Date(ordemCompra.dataOrdem);
+    if (!isNaN(dPrev) && !isNaN(dOrdem) && dPrev < dOrdem) {
+      throw new Error("Data prevista não pode ser anterior à data da ordem");
+    }
+
+    // Data da ordem não pode ser futura (regra do backend)
+    const hoje = new Date();
+    // normalizar somente a parte da data
+    const hojeYMD = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const dOrdemYMD = new Date(dOrdem.getFullYear(), dOrdem.getMonth(), dOrdem.getDate());
+    if (!isNaN(dOrdemYMD) && dOrdemYMD > hojeYMD) {
+      throw new Error("Data da ordem não pode ser futura");
+    }
+
     if (ordemCompra.dataEntre) {
       this.validateDate(ordemCompra.dataEntre, "Data de entrega");
     }
+  }
+
+  /**
+   * Normaliza e filtra o payload para o backend
+   * - Remove campos desconhecidos
+   * - Converte tipos
+   * - Garante status válido
+   * - Normaliza datas para YYYY-MM-DD
+   */
+  sanitizeOrdemCompraPayload(data, isCreate = true) {
+    const onlyDate = (v) => {
+      if (!v) return null;
+      if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? null : d.toISOString().split("T")[0];
+    };
+
+    const statusMap = { ANDA: "PROC" }; // mapear valores legacy
+    const status = (data.statusOrdemCompra || "").toUpperCase();
+    const normalizedStatus = statusMap[status] || status;
+
+    // Converter valor para número (pode vir como string formatada); permitir ausente (null/undefined)
+    let valorNum;
+    if (data.valor === null || data.valor === undefined || (typeof data.valor === "string" && data.valor.trim() === "")) {
+      valorNum = undefined; // não enviar campo
+    } else if (typeof data.valor === "string") {
+      const parsed = parseFloat(data.valor.replace(/[^\d.,-]/g, "").replace(",", "."));
+      valorNum = isNaN(parsed) ? undefined : parsed;
+    } else if (typeof data.valor === "number") {
+      valorNum = isNaN(data.valor) ? undefined : data.valor;
+    }
+
+    const payload = {
+      id: data.id ?? undefined,
+      statusOrdemCompra: normalizedStatus,
+      valor: valorNum,
+      dataPrev: onlyDate(data.dataPrev),
+      dataOrdem: onlyDate(data.dataOrdem),
+      dataEntre: onlyDate(data.dataEntre),
+    };
+
+    // Remover undefined/null para evitar enviar campos desnecessários
+    Object.keys(payload).forEach((k) => {
+      if (payload[k] === undefined || payload[k] === null) delete payload[k];
+    });
+
+    return payload;
   }
 
   /**

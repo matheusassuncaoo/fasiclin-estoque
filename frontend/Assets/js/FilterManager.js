@@ -16,6 +16,8 @@ class FilterManager {
       field: "id",
       direction: "asc",
     };
+    this.searchTerm = "";
+    this.searchTimeout = null;
 
     this.init();
   }
@@ -86,6 +88,28 @@ class FilterManager {
         this.handleSort(field);
       });
     });
+
+    // Busca
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput) {
+      searchInput.addEventListener("input", (e) => {
+        this.handleSearch(e.target.value);
+      });
+
+      searchInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          this.handleSearch(e.target.value, true);
+        }
+      });
+    }
+
+    // Botão limpar busca
+    const clearSearch = document.getElementById("clearSearch");
+    if (clearSearch) {
+      clearSearch.addEventListener("click", () => {
+        this.clearSearch();
+      });
+    }
   }
 
   /**
@@ -404,6 +428,190 @@ class FilterManager {
       filters: { ...this.currentFilters },
       sort: { ...this.currentSort },
     };
+  }
+
+  /**
+   * Lida com a busca
+   * @param {string} searchValue - Termo de busca
+   * @param {boolean} immediate - Se deve executar imediatamente
+   */
+  handleSearch(searchValue, immediate = false) {
+    // Limpar timeout anterior
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
+
+    // Atualizar termo de busca
+    this.searchTerm = searchValue.trim();
+
+    // Mostrar/ocultar botão limpar
+    const clearButton = document.getElementById("clearSearch");
+    if (clearButton) {
+      clearButton.style.display = this.searchTerm ? "flex" : "none";
+    }
+
+    // Aplicar busca com debounce ou imediatamente
+    if (immediate || this.searchTerm.length === 0) {
+      this.executeSearch();
+    } else {
+      this.searchTimeout = setTimeout(() => {
+        this.executeSearch();
+      }, 300); // 300ms de debounce
+    }
+  }
+
+  /**
+   * Executa a busca
+   */
+  executeSearch() {
+    if (!this.ordemCompraManager) {
+      return;
+    }
+
+    // Filtrar ordens baseado no termo de busca
+    const allOrdens = this.ordemCompraManager.ordensCompra;
+    let filteredOrdens = allOrdens;
+
+    if (this.searchTerm) {
+      const searchLower = this.searchTerm.toLowerCase();
+
+      filteredOrdens = allOrdens.filter((ordem) => {
+        // Buscar por ID
+        if (ordem.id && ordem.id.toString().includes(searchLower)) {
+          return true;
+        }
+
+        // Buscar por Status
+        if (
+          ordem.statusOrdemCompra &&
+          ordem.statusOrdemCompra.toLowerCase().includes(searchLower)
+        ) {
+          return true;
+        }
+
+        // Buscar por Valor
+        if (ordem.valor) {
+          const valorFormatado = parseFloat(ordem.valor).toLocaleString(
+            "pt-BR",
+            {
+              minimumFractionDigits: 2,
+            }
+          );
+          if (
+            valorFormatado.includes(searchLower) ||
+            ordem.valor.toString().includes(searchLower)
+          ) {
+            return true;
+          }
+        }
+
+        // Buscar por Data Prevista
+        if (ordem.dataPrev) {
+          const dataPrevFormatada = new Date(ordem.dataPrev).toLocaleDateString(
+            "pt-BR"
+          );
+          if (dataPrevFormatada.includes(searchLower)) {
+            return true;
+          }
+        }
+
+        // Buscar por Data da Ordem
+        if (ordem.dataOrdem) {
+          const dataOrdemFormatada = new Date(
+            ordem.dataOrdem
+          ).toLocaleDateString("pt-BR");
+          if (dataOrdemFormatada.includes(searchLower)) {
+            return true;
+          }
+        }
+
+        // Buscar por Data de Entrega
+        if (ordem.dataEntre) {
+          const dataEntregaFormatada = new Date(
+            ordem.dataEntre
+          ).toLocaleDateString("pt-BR");
+          if (dataEntregaFormatada.includes(searchLower)) {
+            return true;
+          }
+        }
+
+        return false;
+      });
+    }
+
+    // Atualizar a tabela com os resultados filtrados (resetar para a primeira página)
+    if (this.ordemCompraManager.componentManager) {
+      this.ordemCompraManager.componentManager.currentPage = 1;
+      this.ordemCompraManager.componentManager.renderTable(filteredOrdens);
+      this.ordemCompraManager.componentManager.updatePaginationInfo(
+        filteredOrdens.length
+      );
+    }
+
+    // Atualizar contador de resultados
+    this.updateSearchResults(filteredOrdens.length, allOrdens.length);
+  }
+
+  /**
+   * Limpa a busca
+   */
+  clearSearch() {
+    const searchInput = document.getElementById("searchInput");
+    const clearButton = document.getElementById("clearSearch");
+
+    if (searchInput) {
+      searchInput.value = "";
+    }
+
+    if (clearButton) {
+      clearButton.style.display = "none";
+    }
+
+    this.searchTerm = "";
+
+    // Restaurar todas as ordens
+    if (this.ordemCompraManager?.componentManager) {
+      this.ordemCompraManager.componentManager.currentPage = 1;
+      this.ordemCompraManager.componentManager.renderTable(
+        this.ordemCompraManager.ordensCompra
+      );
+      this.ordemCompraManager.componentManager.updatePaginationInfo(
+        this.ordemCompraManager.ordensCompra.length
+      );
+    }
+
+    // Focar no input
+    if (searchInput) {
+      searchInput.focus();
+    }
+  }
+
+  /**
+   * Atualiza o contador de resultados da busca
+   * @param {number} filteredCount - Número de resultados filtrados
+   * @param {number} totalCount - Número total de ordens
+   */
+  updateSearchResults(filteredCount, totalCount) {
+    // Criar ou atualizar indicador de resultados
+    let resultsIndicator = document.getElementById("searchResults");
+
+    if (!resultsIndicator) {
+      resultsIndicator = document.createElement("div");
+      resultsIndicator.id = "searchResults";
+      resultsIndicator.className = "search-results";
+
+      const searchContainer = document.querySelector(".search-container");
+      if (searchContainer) {
+        searchContainer.appendChild(resultsIndicator);
+      }
+    }
+
+    if (this.searchTerm && filteredCount !== totalCount) {
+      resultsIndicator.textContent = `${filteredCount} de ${totalCount} ordens`;
+      resultsIndicator.style.display = "block";
+    } else {
+      resultsIndicator.style.display = "none";
+    }
   }
 
   /**

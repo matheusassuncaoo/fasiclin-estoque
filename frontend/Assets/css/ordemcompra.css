@@ -919,6 +919,19 @@
   margin: 0 auto;
 }
 
+.page-title-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.page-logo {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+  filter: brightness(0) invert(1); /* Torna o logo branco */
+}
+
 .page-title {
   color: var(--branco);
   font-weight: 700;
@@ -948,6 +961,100 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* BARRA DE BUSCA */
+.search-container {
+  position: relative;
+}
+
+.search-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 300px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 40px 10px 35px;
+  border: 2px solid var(--cinza-claro);
+  border-radius: 25px;
+  font-size: 14px;
+  background-color: var(--branco);
+  transition: all 0.3s ease;
+  outline: none;
+  color: var(--preto);
+}
+
+.search-input:focus {
+  border-color: var(--azul);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+  background-color: var(--branco);
+}
+
+.search-input::placeholder {
+  color: var(--cinza);
+  font-style: italic;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--cinza);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.search-clear {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--cinza);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+
+.search-clear:hover {
+  background-color: var(--cinza-claro);
+  color: var(--preto);
+}
+
+.search-clear svg {
+  width: 14px;
+  height: 14px;
+}
+
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--branco);
+  border: 1px solid var(--cinza-claro);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--cinza);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  display: none;
 }
 
 /* FILTROS */
@@ -1068,7 +1175,7 @@
 }
 
 .btn-secondary {
-  background-color: var(--cinza);
+  background-color: #D70015;
   color: var(--preto);
 }
 
@@ -1317,6 +1424,23 @@
   width: 16px;
   height: 16px;
   stroke-width: 2.5;
+}
+
+/* Botões desabilitados */
+.action-btn.disabled {
+  background: rgba(108, 117, 125, 0.3) !important;
+  border: 1px solid rgba(108, 117, 125, 0.4) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
+
+.action-btn.disabled:hover {
+  background: rgba(108, 117, 125, 0.3) !important;
+  border: 1px solid rgba(108, 117, 125, 0.4) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 /* PAGINAÇÃO */
@@ -3090,7 +3214,7 @@
 }
 
 .btn-success {
-  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  background: #00a76a;
   border: none;
   box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
   transition: all 0.3s ease;
@@ -3102,7 +3226,9 @@
 }
 
 .btn-secondary {
-  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+  background: #D70015;
+  color: white
+  ;
   border: none;
   box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }

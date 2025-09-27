@@ -192,22 +192,37 @@
 
       const formatBRL = (num) => {
         try {
-          return new Intl.NumberFormat("pt-BR", {
+          console.log("[DEBUG] formatBRL input num:", num);
+          const formatted = new Intl.NumberFormat("pt-BR", {
             style: "currency",
             currency: "BRL",
           }).format(num);
+          console.log("[DEBUG] formatBRL result:", formatted);
+          return formatted;
         } catch (_) {
-          return "R$ " + (Number(num) || 0).toFixed(2);
+          const fallback = "R$ " + (Number(num) || 0).toFixed(2);
+          console.log("[DEBUG] formatBRL fallback:", fallback);
+          return fallback;
         }
       };
 
       const parseToNumber = (value) => {
         if (!value) return 0;
+        console.log("[DEBUG] parseToNumber input:", value);
+        
+        // Versão simplificada com logs para debug
         const only = String(value).replace(/[^0-9,]/g, "");
+        console.log("[DEBUG] parseToNumber only digits and comma:", only);
         if (!only) return 0;
+        
         const normalized = only.replace(/\./g, "").replace(",", ".");
+        console.log("[DEBUG] parseToNumber normalized:", normalized);
+        
         const n = parseFloat(normalized);
-        return isNaN(n) ? 0 : n;
+        const result = isNaN(n) ? 0 : n;
+        console.log("[DEBUG] parseToNumber final result:", result);
+        
+        return result;
       };
 
       const onInput = (e) => {
@@ -248,13 +263,18 @@
 
     getNumericValueFromCurrency(input) {
       if (!input) return 0;
+      console.log("[DEBUG] getNumericValueFromCurrency input.value:", input.value);
       if (typeof input.__parseCurrencyToNumber === "function") {
-        return input.__parseCurrencyToNumber(input.value);
+        const result = input.__parseCurrencyToNumber(input.value);
+        console.log("[DEBUG] getNumericValueFromCurrency __parseCurrencyToNumber result:", result);
+        return result;
       }
       const v = String(input.value || "")
         .replace(/[^0-9,]/g, "")
         .replace(",", ".");
+      console.log("[DEBUG] getNumericValueFromCurrency fallback v:", v);
       const n = parseFloat(v);
+      console.log("[DEBUG] getNumericValueFromCurrency fallback result:", n);
       return isNaN(n) ? 0 : n;
     }
 

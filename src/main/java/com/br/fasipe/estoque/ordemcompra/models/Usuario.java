@@ -17,7 +17,8 @@ import lombok.NoArgsConstructor;
  * Entidade Usuario representando a tabela USUARIO do banco de dados.
  * 
  * Esta classe representa um usuário do sistema com credenciais de autenticação.
- * É utilizada para validação de usuários em operações sensíveis como desativação de ordens.
+ * É utilizada para validação de usuários em operações sensíveis como
+ * desativação de ordens.
  * 
  * @author Sistema Fasiclin
  * @version 1.0

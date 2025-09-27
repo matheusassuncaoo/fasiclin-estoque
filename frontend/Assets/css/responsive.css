@@ -356,4 +356,26 @@
     padding: 8px;
     font-size: 12px;
   }
+  .toolbar-right {
+    width: 100%;
+  }
+
+  .search-input-group {
+    min-width: unset;
+    width: 100%;
+  }
+
+  /* Itens modal table responsiveness */
+  .items-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .items-table table,
+  .items-table .table {
+    min-width: 600px;
+  }
+
+  .financial-summary {
+    width: 100%;
+  }
 }

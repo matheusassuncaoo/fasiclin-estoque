@@ -101,8 +101,6 @@ public class ItemOrdemCompra {
     // Campo vlrTotal removido - não existe no banco
     // Valor total será calculado dinamicamente quando necessário
 
-
-
     // Métodos utilitários
 
     /**
@@ -164,7 +162,8 @@ public class ItemOrdemCompra {
     }
 
     /**
-     * Método setter customizado para quantidade que recalcula o valor total automaticamente.
+     * Método setter customizado para quantidade que recalcula o valor total
+     * automaticamente.
      * 
      * @param qntd Nova quantidade
      */
@@ -174,7 +173,8 @@ public class ItemOrdemCompra {
     }
 
     /**
-     * Método setter customizado para valor que recalcula o valor total automaticamente.
+     * Método setter customizado para valor que recalcula o valor total
+     * automaticamente.
      * 
      * @param valor Novo valor unitário
      */
@@ -191,6 +191,5 @@ public class ItemOrdemCompra {
         // Método mantido para compatibilidade
         // O valor total é calculado dinamicamente via getVlrTotal()
     }
-
 
 }

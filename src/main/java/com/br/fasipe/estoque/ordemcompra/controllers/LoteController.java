@@ -58,16 +58,12 @@ public class LoteController {
     @GetMapping("/{id}")
     @Operation(summary = "Buscar lote por ID", description = "Retorna um lote específico pelo seu ID")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lote encontrado com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class))),
-        @ApiResponse(responseCode = "404", description = "Lote não encontrado",
-                content = @Content),
-        @ApiResponse(responseCode = "400", description = "ID inválido",
-                content = @Content)
+            @ApiResponse(responseCode = "200", description = "Lote encontrado com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class))),
+            @ApiResponse(responseCode = "404", description = "Lote não encontrado", content = @Content),
+            @ApiResponse(responseCode = "400", description = "ID inválido", content = @Content)
     })
     public ResponseEntity<Lote> findById(
-            @Parameter(description = "ID do lote", required = true)
-            @PathVariable @NotNull Integer id) {
+            @Parameter(description = "ID do lote", required = true) @PathVariable @NotNull Integer id) {
         try {
             Lote lote = loteService.findById(id);
             return ResponseEntity.ok(lote);
@@ -86,8 +82,7 @@ public class LoteController {
     @GetMapping
     @Operation(summary = "Listar todos os lotes", description = "Retorna uma lista com todos os lotes")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class)))
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class)))
     })
     public ResponseEntity<List<Lote>> findAll() {
         List<Lote> lotes = loteService.findAll();
@@ -103,16 +98,12 @@ public class LoteController {
     @PostMapping
     @Operation(summary = "Criar novo lote", description = "Cria um novo lote")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Lote criado com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class))),
-        @ApiResponse(responseCode = "400", description = "Dados inválidos",
-                content = @Content),
-        @ApiResponse(responseCode = "409", description = "Conflito de dados",
-                content = @Content)
+            @ApiResponse(responseCode = "201", description = "Lote criado com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class))),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Conflito de dados", content = @Content)
     })
     public ResponseEntity<Lote> create(
-            @Parameter(description = "Dados do lote", required = true)
-            @Valid @RequestBody Lote lote) {
+            @Parameter(description = "Dados do lote", required = true) @Valid @RequestBody Lote lote) {
         try {
             Lote novoLote = loteService.create(lote);
             return ResponseEntity.status(HttpStatus.CREATED).body(novoLote);
@@ -132,18 +123,13 @@ public class LoteController {
     @PutMapping
     @Operation(summary = "Atualizar lote", description = "Atualiza um lote existente")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lote atualizado com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class))),
-        @ApiResponse(responseCode = "400", description = "Dados inválidos",
-                content = @Content),
-        @ApiResponse(responseCode = "404", description = "Lote não encontrado",
-                content = @Content),
-        @ApiResponse(responseCode = "409", description = "Conflito de dados",
-                content = @Content)
+            @ApiResponse(responseCode = "200", description = "Lote atualizado com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class))),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Lote não encontrado", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Conflito de dados", content = @Content)
     })
     public ResponseEntity<Lote> update(
-            @Parameter(description = "Dados atualizados do lote", required = true)
-            @Valid @RequestBody Lote lote) {
+            @Parameter(description = "Dados atualizados do lote", required = true) @Valid @RequestBody Lote lote) {
         try {
             Lote loteAtualizado = loteService.update(lote);
             return ResponseEntity.ok(loteAtualizado);
@@ -165,14 +151,13 @@ public class LoteController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Remover lote", description = "Remove um lote pelo ID")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "Lote removido com sucesso"),
-        @ApiResponse(responseCode = "404", description = "Lote não encontrado"),
-        @ApiResponse(responseCode = "400", description = "ID inválido"),
-        @ApiResponse(responseCode = "409", description = "Conflito - lote não pode ser removido")
+            @ApiResponse(responseCode = "204", description = "Lote removido com sucesso"),
+            @ApiResponse(responseCode = "404", description = "Lote não encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID inválido"),
+            @ApiResponse(responseCode = "409", description = "Conflito - lote não pode ser removido")
     })
     public ResponseEntity<Void> deleteById(
-            @Parameter(description = "ID do lote a ser removido", required = true)
-            @PathVariable @NotNull Integer id) {
+            @Parameter(description = "ID do lote a ser removido", required = true) @PathVariable @NotNull Integer id) {
         try {
             loteService.deleteById(id);
             return ResponseEntity.noContent().build();
@@ -185,10 +170,6 @@ public class LoteController {
         }
     }
 
-
-
-
-
     /**
      * Busca lotes por data de validade.
      * 
@@ -198,14 +179,11 @@ public class LoteController {
     @GetMapping("/validade/{dataValidade}")
     @Operation(summary = "Buscar lotes por data de validade", description = "Retorna lotes com data de validade específica")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class))),
-        @ApiResponse(responseCode = "400", description = "Data inválida",
-                content = @Content)
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class))),
+            @ApiResponse(responseCode = "400", description = "Data inválida", content = @Content)
     })
     public ResponseEntity<List<Lote>> findByDataValidade(
-            @Parameter(description = "Data de validade (formato: yyyy-MM-dd)", required = true)
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataValidade) {
+            @Parameter(description = "Data de validade (formato: yyyy-MM-dd)", required = true) @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataValidade) {
         try {
             List<Lote> lotes = loteService.findByDataValidade(dataValidade);
             return ResponseEntity.ok(lotes);
@@ -222,8 +200,7 @@ public class LoteController {
     @GetMapping("/vencidos")
     @Operation(summary = "Buscar lotes vencidos", description = "Retorna todos os lotes com data de validade anterior à data atual")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class)))
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class)))
     })
     public ResponseEntity<List<Lote>> findLotesVencidos() {
         List<Lote> lotes = loteService.findLotesVencidos();
@@ -238,8 +215,7 @@ public class LoteController {
     @GetMapping("/proximos-vencimento")
     @Operation(summary = "Buscar lotes próximos ao vencimento", description = "Retorna lotes que vencem nos próximos 30 dias")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class)))
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class)))
     })
     public ResponseEntity<List<Lote>> findLotesProximosVencimento() {
         List<Lote> lotes = loteService.findLotesProximosVencimento();
@@ -254,36 +230,29 @@ public class LoteController {
     @GetMapping("/validos")
     @Operation(summary = "Buscar lotes válidos", description = "Retorna todos os lotes com data de validade posterior à data atual")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class)))
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class)))
     })
     public ResponseEntity<List<Lote>> findLotesValidos() {
         List<Lote> lotes = loteService.findLotesValidos();
         return ResponseEntity.ok(lotes);
     }
 
-
-
     /**
      * Busca lotes por faixa de datas de validade.
      * 
      * @param dataInicio Data inicial
-     * @param dataFim Data final
+     * @param dataFim    Data final
      * @return ResponseEntity com lista de lotes
      */
     @GetMapping("/validade-periodo")
     @Operation(summary = "Buscar lotes por período de validade", description = "Retorna lotes com validade dentro do período especificado")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class))),
-        @ApiResponse(responseCode = "400", description = "Parâmetros inválidos",
-                content = @Content)
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Lote.class))),
+            @ApiResponse(responseCode = "400", description = "Parâmetros inválidos", content = @Content)
     })
     public ResponseEntity<List<Lote>> findByDataValidadeBetween(
-            @Parameter(description = "Data inicial (formato: yyyy-MM-dd)", required = true)
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
-            @Parameter(description = "Data final (formato: yyyy-MM-dd)", required = true)
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim) {
+            @Parameter(description = "Data inicial (formato: yyyy-MM-dd)", required = true) @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+            @Parameter(description = "Data final (formato: yyyy-MM-dd)", required = true) @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim) {
         try {
             List<Lote> lotes = loteService.findByDataValidadeBetween(dataInicio, dataFim);
             return ResponseEntity.ok(lotes);
@@ -291,8 +260,6 @@ public class LoteController {
             return ResponseEntity.badRequest().build();
         }
     }
-
-
 
     /**
      * Verifica se um lote está vencido.
@@ -303,12 +270,11 @@ public class LoteController {
     @PostMapping("/verificar-vencimento")
     @Operation(summary = "Verificar vencimento do lote", description = "Verifica se um lote está vencido")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Verificação realizada com sucesso"),
-        @ApiResponse(responseCode = "400", description = "Dados inválidos")
+            @ApiResponse(responseCode = "200", description = "Verificação realizada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos")
     })
     public ResponseEntity<Boolean> isLoteVencido(
-            @Parameter(description = "Lote a ser verificado", required = true)
-            @Valid @RequestBody Lote lote) {
+            @Parameter(description = "Lote a ser verificado", required = true) @Valid @RequestBody Lote lote) {
         try {
             Boolean vencido = loteService.isLoteVencido(lote);
             return ResponseEntity.ok(vencido);
@@ -326,12 +292,11 @@ public class LoteController {
     @PostMapping("/verificar-proximo-vencimento")
     @Operation(summary = "Verificar proximidade do vencimento", description = "Verifica se um lote está próximo ao vencimento (30 dias)")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Verificação realizada com sucesso"),
-        @ApiResponse(responseCode = "400", description = "Dados inválidos")
+            @ApiResponse(responseCode = "200", description = "Verificação realizada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos")
     })
     public ResponseEntity<Boolean> isLoteProximoVencimento(
-            @Parameter(description = "Lote a ser verificado", required = true)
-            @Valid @RequestBody Lote lote) {
+            @Parameter(description = "Lote a ser verificado", required = true) @Valid @RequestBody Lote lote) {
         try {
             Boolean proximoVencimento = loteService.isLoteProximoVencimento(lote);
             return ResponseEntity.ok(proximoVencimento);

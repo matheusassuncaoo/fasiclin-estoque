@@ -20,7 +20,14 @@
       <!-- Header -->
       <header class="header">
         <div class="header-content">
-          <h1 class="page-title">Ordens de Compra</h1>
+          <div class="page-title-container">
+            <img
+              src="./Assets/images/FasicomercioLogo.png"
+              alt="Fasicomércio"
+              class="page-logo"
+            />
+            <h1 class="page-title">Ordens de Compra</h1>
+          </div>
           <div class="header-info">
             <button
               class="btn-info"
@@ -34,7 +41,7 @@
       </header>
 
       <!-- Modal de Informações do Sistema -->
-      <div class="modal-overlay" id="modalInfo" style="display: none">
+      <div class="modal-overlay" id="modalInfo">
         <div class="modal modal-info">
           <div class="modal-header">
             <h2>
@@ -158,6 +165,31 @@
             Remover selecionados
           </button>
         </div>
+
+        <!-- Barra de Busca -->
+        <div class="toolbar-right">
+          <div class="search-container">
+            <div class="search-input-group">
+              <i data-feather="search" class="search-icon"></i>
+              <input
+                type="text"
+                id="searchInput"
+                class="search-input"
+                placeholder="Buscar por ID, status, valor ou data..."
+                autocomplete="off"
+              />
+              <button
+                type="button"
+                id="clearSearch"
+                class="search-clear"
+                title="Limpar busca"
+                style="display: none"
+              >
+                <i data-feather="x"></i>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Tabela de Ordens de Compra -->
@@ -228,7 +260,11 @@
           <span class="pagination-text" id="lastPage" style="cursor: pointer"
             >Última</span
           >
-          <span class="pagination-details" id="paginationDetails" style="margin-left: 12px; opacity: .8;"></span>
+          <span
+            class="pagination-details"
+            id="paginationDetails"
+            style="margin-left: 12px; opacity: 0.8"
+          ></span>
         </div>
       </div>
     </div>
@@ -501,7 +537,7 @@
     </div>
 
     <!-- Modal de Credenciais para Desativação -->
-    <div class="modal-overlay" id="modalCredentials" style="display: none">
+    <div class="modal-overlay" id="modalCredentials">
       <div class="modal modal-credentials">
         <div class="modal-header">
           <h2>
@@ -515,8 +551,8 @@
         <div class="modal-body">
           <div class="credentials-info">
             <p>
-              <strong>Atenção:</strong> Esta ação irá remover permanentemente a
-              ordem de compra selecionada.
+              <strong>Atenção:</strong> Esta ação irá remover permanentemente 
+              <span id="credentialsTargetId">a ordem de compra selecionada</span>.
             </p>
             <p>Por favor, confirme sua identidade para prosseguir:</p>
           </div>

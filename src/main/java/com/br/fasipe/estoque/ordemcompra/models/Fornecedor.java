@@ -16,17 +16,22 @@ import lombok.NoArgsConstructor;
 /**
  * Entidade que representa um fornecedor no sistema.
  * 
- * <p>Esta classe mapeia a tabela FORNECEDOR do banco de dados MySQL e contém
- * informações completas sobre fornecedores, incluindo dados básicos de identificação,
- * representante comercial e informações de contato.</p>
+ * <p>
+ * Esta classe mapeia a tabela FORNECEDOR do banco de dados MySQL e contém
+ * informações completas sobre fornecedores, incluindo dados básicos de
+ * identificação,
+ * representante comercial e informações de contato.
+ * </p>
  * 
- * <p><strong>Estrutura da tabela FORNECEDOR:</strong></p>
+ * <p>
+ * <strong>Estrutura da tabela FORNECEDOR:</strong>
+ * </p>
  * <ul>
- *   <li><strong>IDFORNECEDOR:</strong> INT PRIMARY KEY AUTO_INCREMENT</li>
- *   <li><strong>ID_PESSOA:</strong> INT NOT NULL UNIQUE</li>
- *   <li><strong>REPRESENT:</strong> VARCHAR(100) (opcional)</li>
- *   <li><strong>CONTREPRE:</strong> CHAR(15) (opcional)</li>
- *   <li><strong>DECRICAO:</strong> VARCHAR(250) (opcional)</li>
+ * <li><strong>IDFORNECEDOR:</strong> INT PRIMARY KEY AUTO_INCREMENT</li>
+ * <li><strong>ID_PESSOA:</strong> INT NOT NULL UNIQUE</li>
+ * <li><strong>REPRESENT:</strong> VARCHAR(100) (opcional)</li>
+ * <li><strong>CONTREPRE:</strong> CHAR(15) (opcional)</li>
+ * <li><strong>DECRICAO:</strong> VARCHAR(250) (opcional)</li>
  * </ul>
  * 
  * @author Sistema Fasiclin - Módulo Estoque
@@ -44,7 +49,10 @@ public class Fornecedor {
 
     /**
      * Identificador único do fornecedor.
-     * <p><strong>Coluna do banco:</strong> IDFORNECEDOR (INT, PRIMARY KEY, AUTO_INCREMENT)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> IDFORNECEDOR (INT, PRIMARY KEY,
+     * AUTO_INCREMENT)
+     * </p>
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -53,7 +61,9 @@ public class Fornecedor {
 
     /**
      * ID da pessoa (física ou jurídica) associada ao fornecedor.
-     * <p><strong>Coluna do banco:</strong> ID_PESSOA (INT, NOT NULL, UNIQUE)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> ID_PESSOA (INT, NOT NULL, UNIQUE)
+     * </p>
      */
     @NotNull(message = "ID da pessoa é obrigatório")
     @Column(name = "ID_PESSOA", nullable = false, unique = true)
@@ -61,7 +71,9 @@ public class Fornecedor {
 
     /**
      * Nome do representante comercial do fornecedor.
-     * <p><strong>Coluna do banco:</strong> REPRESENT (VARCHAR(100), opcional)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> REPRESENT (VARCHAR(100), opcional)
+     * </p>
      */
     @Size(max = 100, message = "Nome do representante deve ter no máximo 100 caracteres")
     @Column(name = "REPRESENT", length = 100)
@@ -69,7 +81,9 @@ public class Fornecedor {
 
     /**
      * Contato do representante comercial (telefone/celular).
-     * <p><strong>Coluna do banco:</strong> CONTREPRE (CHAR(15), opcional)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> CONTREPRE (CHAR(15), opcional)
+     * </p>
      */
     @Size(max = 15, message = "Contato do representante deve ter no máximo 15 caracteres")
     @Column(name = "CONTREPRE", length = 15)
@@ -77,9 +91,14 @@ public class Fornecedor {
 
     /**
      * Descrição adicional do fornecedor.
-     * <p><strong>Coluna do banco:</strong> DECRICAO (VARCHAR(250), opcional)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> DECRICAO (VARCHAR(250), opcional)
+     * </p>
      * 
-     * <p><strong>Nota:</strong> O nome da coluna no banco está com erro de grafia (DECRICAO ao invés de DESCRICAO)</p>
+     * <p>
+     * <strong>Nota:</strong> O nome da coluna no banco está com erro de grafia
+     * (DECRICAO ao invés de DESCRICAO)
+     * </p>
      */
     @Size(max = 250, message = "Descrição deve ter no máximo 250 caracteres")
     @Column(name = "DECRICAO", length = 250)
@@ -122,15 +141,15 @@ public class Fornecedor {
     public String getResumo() {
         StringBuilder resumo = new StringBuilder();
         resumo.append("Fornecedor ID: ").append(id);
-        
+
         if (temRepresentante()) {
             resumo.append(", Representante: ").append(representante);
         }
-        
+
         if (temContatoRepresentante()) {
             resumo.append(", Contato: ").append(contatoRepresentante);
         }
-        
+
         return resumo.toString();
     }
 

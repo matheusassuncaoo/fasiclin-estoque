@@ -74,8 +74,6 @@ public class Lote {
     @Column(name = "QNTD", nullable = false)
     private Integer qntd;
 
-
-
     /**
      * Verifica se o lote está vencido.
      * 
@@ -187,6 +185,5 @@ public class Lote {
             return descricao;
         }
     }
-
 
 }

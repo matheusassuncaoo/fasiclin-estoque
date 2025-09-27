@@ -38,27 +38,28 @@ public class UsuarioService {
         if (login == null || login.trim().isEmpty()) {
             return false;
         }
-        
+
         if (senha == null || senha.trim().isEmpty()) {
             return false;
         }
 
         try {
-            // Por simplicidade, vamos assumir que a senha no banco pode estar em texto plano
+            // Por simplicidade, vamos assumir que a senha no banco pode estar em texto
+            // plano
             // ou com hash simples MD5 (não recomendado para produção)
-            
+
             // Primeiro, tentar com senha em texto plano
             boolean existsPlain = usuarioRepository.existsByLoginAndSenha(login.trim(), senha.trim());
             if (existsPlain) {
                 return true;
             }
-            
+
             // Se não encontrou, tentar com hash MD5
             String senhaHash = gerarHashMD5(senha.trim());
             boolean existsHash = usuarioRepository.existsByLoginAndSenha(login.trim(), senhaHash);
-            
+
             return existsHash;
-            
+
         } catch (Exception e) {
             System.err.println("Erro ao autenticar usuário: " + e.getMessage());
             return false;
@@ -75,7 +76,7 @@ public class UsuarioService {
         if (login == null || login.trim().isEmpty()) {
             return Optional.empty();
         }
-        
+
         return usuarioRepository.findByLogin(login.trim());
     }
 
@@ -91,7 +92,7 @@ public class UsuarioService {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
             byte[] messageDigest = md.digest(input.getBytes());
-            
+
             StringBuilder hexString = new StringBuilder();
             for (byte b : messageDigest) {
                 String hex = Integer.toHexString(0xff & b);
@@ -100,7 +101,7 @@ public class UsuarioService {
                 }
                 hexString.append(hex);
             }
-            
+
             return hexString.toString();
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Erro ao gerar hash MD5", e);
@@ -117,7 +118,7 @@ public class UsuarioService {
         if (login == null || login.trim().isEmpty()) {
             return false;
         }
-        
+
         return usuarioRepository.findByLogin(login.trim()).isPresent();
     }
 }

@@ -23,22 +23,26 @@ import java.math.BigDecimal;
 /**
  * Entidade que representa um produto no sistema.
  * 
- * <p>Esta classe mapeia a tabela PRODUTO do banco de dados MySQL e contém
+ * <p>
+ * Esta classe mapeia a tabela PRODUTO do banco de dados MySQL e contém
  * informações completas sobre produtos, incluindo dados básicos,
- * controle de estoque e configurações de armazenamento.</p>
+ * controle de estoque e configurações de armazenamento.
+ * </p>
  * 
- * <p><strong>Estrutura da tabela PRODUTO:</strong></p>
+ * <p>
+ * <strong>Estrutura da tabela PRODUTO:</strong>
+ * </p>
  * <ul>
- *   <li><strong>IDPRODUTO:</strong> INT PRIMARY KEY AUTO_INCREMENT</li>
- *   <li><strong>NOME:</strong> VARCHAR(50) NOT NULL</li>
- *   <li><strong>DESCRICAO:</strong> VARCHAR(250) NOT NULL</li>
- *   <li><strong>ID_ALMOX:</strong> INT (opcional)</li>
- *   <li><strong>ID_UNMEDI:</strong> INT NOT NULL</li>
- *   <li><strong>CODBARRAS:</strong> VARCHAR(250) (opcional)</li>
- *   <li><strong>TEMPIDEAL:</strong> DECIMAL(3,1) (opcional)</li>
- *   <li><strong>STQMAX:</strong> INT NOT NULL</li>
- *   <li><strong>STQMIN:</strong> INT NOT NULL</li>
- *   <li><strong>PNTPEDIDO:</strong> INT NOT NULL</li>
+ * <li><strong>IDPRODUTO:</strong> INT PRIMARY KEY AUTO_INCREMENT</li>
+ * <li><strong>NOME:</strong> VARCHAR(50) NOT NULL</li>
+ * <li><strong>DESCRICAO:</strong> VARCHAR(250) NOT NULL</li>
+ * <li><strong>ID_ALMOX:</strong> INT (opcional)</li>
+ * <li><strong>ID_UNMEDI:</strong> INT NOT NULL</li>
+ * <li><strong>CODBARRAS:</strong> VARCHAR(250) (opcional)</li>
+ * <li><strong>TEMPIDEAL:</strong> DECIMAL(3,1) (opcional)</li>
+ * <li><strong>STQMAX:</strong> INT NOT NULL</li>
+ * <li><strong>STQMIN:</strong> INT NOT NULL</li>
+ * <li><strong>PNTPEDIDO:</strong> INT NOT NULL</li>
  * </ul>
  * 
  * @author Sistema Fasiclin - Módulo Estoque
@@ -56,7 +60,10 @@ public class Produto {
 
     /**
      * Identificador único do produto.
-     * <p><strong>Coluna do banco:</strong> IDPRODUTO (INT, PRIMARY KEY, AUTO_INCREMENT)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> IDPRODUTO (INT, PRIMARY KEY,
+     * AUTO_INCREMENT)
+     * </p>
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -65,7 +72,9 @@ public class Produto {
 
     /**
      * Nome do produto.
-     * <p><strong>Coluna do banco:</strong> NOME (VARCHAR(50), NOT NULL)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> NOME (VARCHAR(50), NOT NULL)
+     * </p>
      */
     @NotBlank(message = "Nome do produto é obrigatório")
     @Size(max = 50, message = "Nome deve ter no máximo 50 caracteres")
@@ -74,7 +83,9 @@ public class Produto {
 
     /**
      * Descrição detalhada do produto.
-     * <p><strong>Coluna do banco:</strong> DESCRICAO (VARCHAR(250), NOT NULL)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> DESCRICAO (VARCHAR(250), NOT NULL)
+     * </p>
      */
     @NotBlank(message = "Descrição do produto é obrigatória")
     @Size(max = 250, message = "Descrição deve ter no máximo 250 caracteres")
@@ -83,14 +94,18 @@ public class Produto {
 
     /**
      * ID do almoxarifado onde o produto é armazenado.
-     * <p><strong>Coluna do banco:</strong> ID_ALMOX (INT, opcional)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> ID_ALMOX (INT, opcional)
+     * </p>
      */
     @Column(name = "ID_ALMOX")
     private Integer idAlmox;
 
     /**
      * ID da unidade de medida do produto.
-     * <p><strong>Coluna do banco:</strong> ID_UNMEDI (INT, NOT NULL)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> ID_UNMEDI (INT, NOT NULL)
+     * </p>
      */
     @NotNull(message = "ID da unidade de medida é obrigatório")
     @Column(name = "ID_UNMEDI", nullable = false)
@@ -98,7 +113,9 @@ public class Produto {
 
     /**
      * Código de barras do produto.
-     * <p><strong>Coluna do banco:</strong> CODBARRAS (VARCHAR(250), opcional)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> CODBARRAS (VARCHAR(250), opcional)
+     * </p>
      */
     @Size(max = 250, message = "Código de barras deve ter no máximo 250 caracteres")
     @Column(name = "CODBARRAS", length = 250)
@@ -106,7 +123,9 @@ public class Produto {
 
     /**
      * Temperatura ideal de armazenamento em graus Celsius.
-     * <p><strong>Coluna do banco:</strong> TEMPIDEAL (DECIMAL(3,1), opcional)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> TEMPIDEAL (DECIMAL(3,1), opcional)
+     * </p>
      */
     @DecimalMax(value = "99.9", message = "Temperatura ideal deve ser no máximo 99.9°C")
     @DecimalMin(value = "-99.9", message = "Temperatura ideal deve ser no mínimo -99.9°C")
@@ -116,7 +135,9 @@ public class Produto {
 
     /**
      * Estoque máximo permitido.
-     * <p><strong>Coluna do banco:</strong> STQMAX (INT, NOT NULL)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> STQMAX (INT, NOT NULL)
+     * </p>
      */
     @NotNull(message = "Estoque máximo é obrigatório")
     @Min(value = 1, message = "Estoque máximo deve ser maior que zero")
@@ -125,7 +146,9 @@ public class Produto {
 
     /**
      * Estoque mínimo permitido.
-     * <p><strong>Coluna do banco:</strong> STQMIN (INT, NOT NULL)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> STQMIN (INT, NOT NULL)
+     * </p>
      */
     @NotNull(message = "Estoque mínimo é obrigatório")
     @Min(value = 0, message = "Estoque mínimo deve ser maior ou igual a zero")
@@ -134,14 +157,14 @@ public class Produto {
 
     /**
      * Ponto de pedido.
-     * <p><strong>Coluna do banco:</strong> PNTPEDIDO (INT, NOT NULL)</p>
+     * <p>
+     * <strong>Coluna do banco:</strong> PNTPEDIDO (INT, NOT NULL)
+     * </p>
      */
     @NotNull(message = "Ponto de pedido é obrigatório")
     @Min(value = 0, message = "Ponto de pedido deve ser maior ou igual a zero")
     @Column(name = "PNTPEDIDO", nullable = false)
     private Integer pntPedido;
-
-
 
     // Métodos utilitários
 
@@ -220,7 +243,7 @@ public class Produto {
         if (quantidadeAtual == null) {
             return StatusEstoque.INDEFINIDO;
         }
-        
+
         if (quantidadeAtual == 0) {
             return StatusEstoque.ZERADO;
         } else if (quantidadeAtual <= pntPedido) {
@@ -255,6 +278,5 @@ public class Produto {
             return descricao;
         }
     }
-
 
 }

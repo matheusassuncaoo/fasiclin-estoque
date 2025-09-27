@@ -53,7 +53,7 @@ class OrdemCompraComponentsManager {
       firstPageBtn: document.getElementById("firstPage"),
       lastPageBtn: document.getElementById("lastPage"),
       paginationCurrent: document.querySelector(".pagination-current"),
-  paginationDetails: document.getElementById("paginationDetails"),
+      paginationDetails: document.getElementById("paginationDetails"),
 
       // Modal
       modalOrdemCompra: document.getElementById("modalOrdemCompra"),
@@ -432,9 +432,19 @@ class OrdemCompraComponentsManager {
       });
     }
 
-    // Fechar modal clicando no overlay
+    // Garantir que o botão "Confirmar Remoção" também dispare a ação
+    // (fallback caso o atributo form="credentialsForm" não acione o submit)
+    if (this.elements.btnConfirmDeactivation) {
+      this.elements.btnConfirmDeactivation.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.handleDeactivationSubmit();
+      });
+    }
+
+    // Fechar modal clicando no overlay (com stopPropagation para evitar bubbling)
     this.elements.modalCredentials.addEventListener("click", (e) => {
       if (e.target === this.elements.modalCredentials) {
+        e.stopPropagation();
         this.closeCredentialsModal();
       }
     });
@@ -465,6 +475,8 @@ class OrdemCompraComponentsManager {
    * @param {Array} ordensCompra - Array com ordens de compra
    */
   renderTable(ordensCompra) {
+    console.log("🏪 [renderTable] INÍCIO - ordens recebidas:", ordensCompra?.length || 0);
+    
     if (!this.elements.tableBody) {
       console.error("[ComponentsManager] Elemento tableBody não encontrado");
       return;
@@ -486,15 +498,22 @@ class OrdemCompraComponentsManager {
     const endIdx = startIdx + this.itemsPerPage;
     const pageItems = ordensCompra.slice(startIdx, endIdx);
 
-    pageItems.forEach((ordem) => {
+    console.log(`🏪 [renderTable] Renderizando página ${this.currentPage}, itens ${startIdx}-${endIdx}:`);
+    pageItems.forEach((ordem, index) => {
+      console.log(`🏪 [renderTable] Item ${index + 1}:`, {
+        id: ordem.id,
+        dataPrev: ordem.dataPrev,
+        dataOrdem: ordem.dataOrdem,
+        dataEntre: ordem.dataEntre
+      });
       const row = this.createTableRow(ordem);
       tbody.appendChild(row);
     });
 
     // Atualizar seleções
     this.updateSelectionState();
-  // Garantir atualização do estado do botão de remoção em massa após trocar de página
-  this.updateBulkActions();
+    // Garantir atualização do estado do botão de remoção em massa após trocar de página
+    this.updateBulkActions();
 
     // Reinicializar ícones
     this.initializeFeatherIcons();
@@ -526,6 +545,19 @@ class OrdemCompraComponentsManager {
     const dataEntreFormatada = ordem.dataEntre
       ? this.formatDate(ordem.dataEntre)
       : "-";
+    // Debug para conferir datas renderizadas
+    console.log(`🎨 [createTableRow] ID ${ordem.id}:`, {
+      raw: {
+        dataPrev: ordem.dataPrev,
+        dataOrdem: ordem.dataOrdem,
+        dataEntre: ordem.dataEntre,
+      },
+      formatted: {
+        dataPrev: dataPrevFormatada,
+        dataOrdem: dataOrdemFormatada,
+        dataEntre: dataEntreFormatada,
+      },
+    });
 
     tr.innerHTML = `
             <td class="checkbox-column">
@@ -555,18 +587,26 @@ class OrdemCompraComponentsManager {
                         title="Gerenciar Itens">
                     <i data-feather="package"></i>
                 </button>
-                <button class="action-btn action-edit" onclick="componentsManager.editOrdem(${
-                  ordem.id
-                })" 
-                        title="Editar">
-                    <i data-feather="edit-2"></i>
-                </button>
-                <button class="action-btn action-delete" onclick="componentsManager.deleteOrdem(${
-                  ordem.id
-                })" 
-                        title="Excluir">
-                    <i data-feather="trash-2"></i>
-                </button>
+                ${ordem.statusOrdemCompra === 'CONC' 
+                  ? `<button class="action-btn action-edit disabled" 
+                           title="Ordem concluída - não pode ser editada"
+                           disabled>
+                        <i data-feather="edit-2"></i>
+                     </button>`
+                  : `<button class="action-btn action-edit" onclick="componentsManager.editOrdem(${ordem.id})" 
+                           title="Editar">
+                        <i data-feather="edit-2"></i>
+                     </button>`}
+                ${ordem.statusOrdemCompra === 'CONC' 
+                  ? `<button class="action-btn action-delete disabled" 
+                           title="Ordem concluída - não pode ser excluída"
+                           disabled>
+                        <i data-feather="trash-2"></i>
+                     </button>`
+                  : `<button class="action-btn action-delete" onclick="componentsManager.deleteOrdem(${ordem.id})" 
+                           title="Excluir">
+                        <i data-feather="trash-2"></i>
+                     </button>`}
             </td>
         `;
 
@@ -802,6 +842,17 @@ class OrdemCompraComponentsManager {
   populateForm(data) {
     if (!data) return;
 
+    console.log("[DEBUG] populateForm - dados recebidos:", data);
+    console.log("[DEBUG] populateForm - elementos encontrados:", {
+      inputId: !!this.elements.inputId,
+      inputStatusOrdemCompra: !!this.elements.inputStatusOrdemCompra,
+      inputValorInicial: !!this.elements.inputValorInicial,
+      inputDataPrev: !!this.elements.inputDataPrev,
+      inputDataOrdem: !!this.elements.inputDataOrdem,
+      inputDataEntre: !!this.elements.inputDataEntre,
+      inputObservacoes: !!this.elements.inputObservacoes
+    });
+
     // Helper para normalizar datas para o formato aceito pelo input[type=date]
     const toInputDate = (value) => {
       if (!value) return "";
@@ -853,12 +904,30 @@ class OrdemCompraComponentsManager {
             }).format(vi)
           : "";
     }
-    if (this.elements.inputDataPrev)
-      this.elements.inputDataPrev.value = toInputDate(data.dataPrev);
-    if (this.elements.inputDataOrdem)
-      this.elements.inputDataOrdem.value = toInputDate(data.dataOrdem);
-    if (this.elements.inputDataEntre)
-      this.elements.inputDataEntre.value = toInputDate(data.dataEntre);
+    if (this.elements.inputDataPrev) {
+      const formattedDataPrev = toInputDate(data.dataPrev);
+      console.log("[DEBUG] populateForm - dataPrev original:", data.dataPrev);
+      console.log("[DEBUG] populateForm - dataPrev formatada:", formattedDataPrev);
+      this.elements.inputDataPrev.value = formattedDataPrev;
+      // Adicionar classe visual para mostrar que foi atualizado
+      this.elements.inputDataPrev.classList.add("is-valid");
+    }
+    if (this.elements.inputDataOrdem) {
+      const formattedDataOrdem = toInputDate(data.dataOrdem);
+      console.log("[DEBUG] populateForm - dataOrdem original:", data.dataOrdem);
+      console.log("[DEBUG] populateForm - dataOrdem formatada:", formattedDataOrdem);
+      this.elements.inputDataOrdem.value = formattedDataOrdem;
+      // Adicionar classe visual para mostrar que foi atualizado
+      this.elements.inputDataOrdem.classList.add("is-valid");
+    }
+    if (this.elements.inputDataEntre) {
+      const formattedDataEntre = toInputDate(data.dataEntre);
+      console.log("[DEBUG] populateForm - dataEntre original:", data.dataEntre);
+      console.log("[DEBUG] populateForm - dataEntre formatada:", formattedDataEntre);
+      this.elements.inputDataEntre.value = formattedDataEntre;
+      // Adicionar classe visual para mostrar que foi atualizado
+      if (formattedDataEntre) this.elements.inputDataEntre.classList.add("is-valid");
+    }
     if (this.elements.inputObservacoes)
       this.elements.inputObservacoes.value = data.observacoes || "";
   }
@@ -921,25 +990,39 @@ class OrdemCompraComponentsManager {
     const dataEntreField = document.getElementById("dataEntre");
     const observacoesField = document.getElementById("observacoesOrdem");
 
-    // Processar valor inicial - se vazio, usar 0
-    let valorInicial = 0;
+    // Debug: Log dos valores dos campos de data
+    console.log("🔍 [getFormData] VALORES CAPTURADOS DOS CAMPOS:");
+    console.log("📅 dataPrevField.value:", dataPrevField?.value);
+    console.log("📅 dataOrdemField.value:", dataOrdemField?.value);
+    console.log("📅 dataEntreField.value:", dataEntreField?.value);
+    console.log("💰 valorInicialField.value:", valorInicialField?.value);
+    console.log("🏷️ statusField.value:", statusField?.value);
+    console.log("🆔 idField.value:", idField?.value);
+
+    // Processar valor inicial - se vazio, deixar indefinido (backend permite ausente)
+    let valorInicial = undefined;
     if (valorInicialField) {
       if (
         window.inputValidator &&
         typeof window.inputValidator.getNumericValueFromCurrency === "function"
       ) {
-        valorInicial =
-          window.inputValidator.getNumericValueFromCurrency(valorInicialField);
+        const parsed = window.inputValidator.getNumericValueFromCurrency(valorInicialField);
+        valorInicial = (parsed === null || parsed === undefined || isNaN(parsed)) ? undefined : parsed;
       } else {
-        valorInicial = valorInicialField.value
-          ? parseFloat(
-              valorInicialField.value.replace(/[^\d.,]/g, "").replace(",", ".")
-            )
-          : 0;
+        if (valorInicialField.value && valorInicialField.value.trim() !== "") {
+          const parsed = parseFloat(
+            valorInicialField.value.replace(/[^\d.,]/g, "").replace(",", ".")
+          );
+          valorInicial = isNaN(parsed) ? undefined : parsed;
+        } else {
+          valorInicial = undefined;
+        }
       }
     }
 
-    return {
+    console.log("[DEBUG] Valor inicial processado:", valorInicial);
+
+    const formData = {
       id: idField?.value || null,
       statusOrdemCompra: statusField?.value || "",
       valor: valorInicial,
@@ -948,6 +1031,17 @@ class OrdemCompraComponentsManager {
       dataEntre: formatDateForBackend(dataEntreField?.value),
       observacoes: observacoesField?.value || "",
     };
+
+    console.log("🎯 [getFormData] DADOS FINAIS DO FORMULÁRIO:");
+    console.log("🆔 ID:", formData.id);
+    console.log("🏷️ Status:", formData.statusOrdemCompra);
+    console.log("💰 Valor:", formData.valor);
+    console.log("📅 Data Prevista:", formData.dataPrev);
+    console.log("📅 Data Ordem:", formData.dataOrdem);
+    console.log("📅 Data Entrega:", formData.dataEntre);
+    console.log("📝 Observações:", formData.observacoes);
+
+    return formData;
   }
 
   /**
@@ -995,12 +1089,14 @@ class OrdemCompraComponentsManager {
       }
     }
 
-    // Validar valor se informado (campo "valorInicial" do formulário mapeia para data.valor)
-    if (typeof data.valor === "number" && data.valor < 0) {
-      errors.push("Valor inicial deve ser maior ou igual a zero");
-      const valorField = document.getElementById("valorInicial");
-      this.markFieldInvalid(valorField);
-      isValid = false;
+    // Validar valor apenas se informado (backend exige > 0 quando presente)
+    if (data.valor !== undefined && data.valor !== null) {
+      if (typeof data.valor !== "number" || isNaN(data.valor) || data.valor <= 0) {
+        errors.push("Valor inicial deve ser maior que zero quando informado");
+        const valorField = document.getElementById("valorInicial");
+        this.markFieldInvalid(valorField);
+        isValid = false;
+      }
     }
 
     // Mostrar erros se houver
@@ -1578,6 +1674,21 @@ class OrdemCompraComponentsManager {
    * @param {number} id - ID da ordem
    */
   editOrdem(id) {
+    // Encontrar a ordem nos dados carregados para verificar o status
+    const ordem = this.data.find(o => o.id === id);
+    
+    if (!ordem) {
+      notify.error("Ordem não encontrada");
+      return;
+    }
+
+    // Verificar se a ordem pode ser editada
+    if (ordem.statusOrdemCompra === 'CONC') {
+      notify.warning("Esta ordem já foi concluída e não pode ser editada");
+      return;
+    }
+
+    // Se chegou até aqui, pode editar
     this.dispatchEvent("ordem:edit", { id });
   }
 
@@ -1635,7 +1746,8 @@ class OrdemCompraComponentsManager {
     }).then((ok) => {
       if (ok) {
         const ids = Array.from(this.selectedItems);
-        this.dispatchEvent("ordem:bulkDelete", { ids });
+        // Abrir modal de credenciais para exclusão em massa
+        this.openBulkCredentialsModal(ids);
       }
     });
   }
@@ -1718,7 +1830,8 @@ class OrdemCompraComponentsManager {
     // Atualizar detalhes de paginação (Página X de Y — Mostrando N–M de T)
     if (this.elements.paginationDetails) {
       const safeTotalPages = Math.max(1, totalPages || 1);
-      const start = totalItems === 0 ? 0 : (this.currentPage - 1) * this.itemsPerPage + 1;
+      const start =
+        totalItems === 0 ? 0 : (this.currentPage - 1) * this.itemsPerPage + 1;
       const end = Math.min(this.currentPage * this.itemsPerPage, totalItems);
       this.elements.paginationDetails.textContent = `Página ${this.currentPage} de ${safeTotalPages} — Mostrando ${start}-${end} de ${totalItems}`;
     }
@@ -1755,12 +1868,19 @@ class OrdemCompraComponentsManager {
     if (!this.elements.modalCredentials || !id) return;
 
     this.currentDeactivationId = id;
+    this.currentBulkIds = null;
 
     // Limpar formulário
     this.clearCredentialsForm();
 
-    // Mostrar modal
-    this.elements.modalCredentials.style.display = "flex";
+    // Mostrar modal usando CSS classes
+    this.elements.modalCredentials.classList.add("active");
+
+    // Se existir um elemento para exibir o alvo, atualiza
+    const targetSpan = document.getElementById("credentialsTargetId");
+    if (targetSpan) {
+      targetSpan.textContent = `#${id}`;
+    }
 
     // Focar no campo login
     if (this.elements.credentialsLogin) {
@@ -1776,18 +1896,47 @@ class OrdemCompraComponentsManager {
   }
 
   /**
+   * Abre o modal de credenciais para exclusão em massa
+   * @param {number[]} ids - IDs das ordens a serem desativadas
+   */
+  openBulkCredentialsModal(ids = []) {
+    if (!this.elements.modalCredentials || !ids || ids.length === 0) return;
+
+    this.currentDeactivationId = null;
+    this.currentBulkIds = ids;
+
+    // Limpar formulário
+    this.clearCredentialsForm();
+
+    // Mostrar modal usando CSS classes
+    this.elements.modalCredentials.classList.add("active");
+
+    // Atualizar target se existir
+    const targetSpan = document.getElementById("credentialsTargetId");
+    if (targetSpan) {
+      targetSpan.textContent = `${ids.length} selecionada(s)`;
+    }
+
+    // Focar
+    if (this.elements.credentialsLogin) {
+      setTimeout(() => this.elements.credentialsLogin.focus(), 100);
+    }
+  }
+
+  /**
    * Fecha o modal de credenciais
    */
   closeCredentialsModal() {
     if (!this.elements.modalCredentials) return;
 
-    this.elements.modalCredentials.style.display = "none";
+    this.elements.modalCredentials.classList.remove("active");
+    // Garante que estados de loading e botões sejam resetados ao fechar
+    this.showCredentialsLoading(false);
     this.currentDeactivationId = null;
+    this.currentBulkIds = null;
 
     // Limpar formulário
     this.clearCredentialsForm();
-
-    console.log("[OrdemCompraComponentsManager] Modal de credenciais fechado");
   }
 
   /**
@@ -1797,7 +1946,7 @@ class OrdemCompraComponentsManager {
   isCredentialsModalOpen() {
     return (
       this.elements.modalCredentials &&
-      this.elements.modalCredentials.style.display !== "none"
+      this.elements.modalCredentials.classList.contains("active")
     );
   }
 
@@ -1843,7 +1992,7 @@ class OrdemCompraComponentsManager {
     let isValid = true;
 
     // Validar login
-    if (!credentials.login) {
+    if (!credentials.login || credentials.login.trim().length < 2) {
       this.markFieldInvalid(this.elements.credentialsLogin);
       isValid = false;
     } else {
@@ -1851,11 +2000,15 @@ class OrdemCompraComponentsManager {
     }
 
     // Validar senha
-    if (!credentials.senha) {
+    if (!credentials.senha || credentials.senha.length < 2) {
       this.markFieldInvalid(this.elements.credentialsPassword);
       isValid = false;
     } else {
       this.markFieldValid(this.elements.credentialsPassword);
+    }
+
+    if (!isValid) {
+      console.log("[OrdemCompraComponentsManager] Validação de credenciais falhou");
     }
 
     return isValid;
@@ -1865,15 +2018,15 @@ class OrdemCompraComponentsManager {
    * Manipula submissão do formulário de desativação
    */
   async handleDeactivationSubmit() {
-    if (!this.currentDeactivationId) {
-      notify.error("Erro: ID da ordem não encontrado");
+    if (!this.currentDeactivationId && (!this.currentBulkIds || this.currentBulkIds.length === 0)) {
+      notify.error("Nenhuma ordem selecionada. Tente novamente.");
       return;
     }
 
     const credentials = this.getCredentialsData();
 
     if (!this.validateCredentials(credentials)) {
-      notify.error("Por favor, preencha login e senha");
+      notify.error("Por favor, preencha todos os campos obrigatórios");
       return;
     }
 
@@ -1881,17 +2034,29 @@ class OrdemCompraComponentsManager {
       // Mostrar loading
       this.showCredentialsLoading(true);
 
-      // Disparar evento para o manager principal
-      this.dispatchEvent("ordem:deactivate", {
-        id: this.currentDeactivationId,
-        credentials: credentials,
-      });
+      console.log(
+        "[OrdemCompraComponentsManager] Iniciando remoção da ordem:",
+        this.currentDeactivationId
+      );
+
+      // Disparar evento para o manager principal (singular ou em massa)
+      if (this.currentBulkIds && this.currentBulkIds.length > 0) {
+        this.dispatchEvent("ordem:deactivateBulk", {
+          ids: this.currentBulkIds,
+          credentials,
+        });
+      } else {
+        this.dispatchEvent("ordem:deactivate", {
+          id: this.currentDeactivationId,
+          credentials,
+        });
+      }
     } catch (error) {
       console.error(
         "[OrdemCompraComponentsManager] Erro na desativação:",
         error
       );
-      notify.error("Erro inesperado ao processar desativação");
+      notify.error("Erro inesperado. Verifique sua conexão e tente novamente.");
       this.showCredentialsLoading(false);
     }
   }
@@ -1905,6 +2070,9 @@ class OrdemCompraComponentsManager {
 
     if (show) {
       this.elements.modalCredentials.classList.add("loading");
+      // Adicionar classe de loading também no conteúdo do modal
+      const modalContent = this.elements.modalCredentials.querySelector(".modal-credentials");
+      if (modalContent) modalContent.classList.add("loading");
       if (this.elements.btnConfirmDeactivation) {
         this.elements.btnConfirmDeactivation.disabled = true;
         this.elements.btnConfirmDeactivation.innerHTML =
@@ -1912,6 +2080,8 @@ class OrdemCompraComponentsManager {
       }
     } else {
       this.elements.modalCredentials.classList.remove("loading");
+      const modalContent = this.elements.modalCredentials.querySelector(".modal-credentials");
+      if (modalContent) modalContent.classList.remove("loading");
       if (this.elements.btnConfirmDeactivation) {
         this.elements.btnConfirmDeactivation.disabled = false;
         this.elements.btnConfirmDeactivation.innerHTML =
@@ -2432,8 +2602,15 @@ class OrdemCompraComponentsManager {
    * Atualiza o resumo financeiro
    */
   atualizarResumoFinanceiro() {
-    const totalItens = this.tempItens.length;
-    const subtotal = this.tempItens.reduce((sum, item) => sum + item.total, 0);
+    // Somar as quantidades para refletir o total real de itens
+    const totalItens = this.tempItens.reduce(
+      (sum, item) => sum + (parseFloat(item.quantidade) || 0),
+      0
+    );
+    const subtotal = this.tempItens.reduce(
+      (sum, item) => sum + (parseFloat(item.total) || 0),
+      0
+    );
 
     // Atualizar contadores
     if (this.elements.totalItens)
@@ -2850,15 +3027,18 @@ class OrdemCompraComponentsManager {
       return "-";
     }
 
+    console.log("📅 [formatDate] INPUT:", dateInput, "TIPO:", typeof dateInput);
+
     // Se é um array (como [2025, 6, 10]), converte para data
     if (Array.isArray(dateInput) && dateInput.length >= 3) {
       const [year, month, day] = dateInput;
       // Mês no JavaScript é 0-indexed, então subtraímos 1
       const date = new Date(year, month - 1, day);
       if (!isNaN(date.getTime())) {
-        return `${day.toString().padStart(2, "0")}/${month
+        const formatted = `${day.toString().padStart(2, "0")}/${month
           .toString()
           .padStart(2, "0")}/${year}`;
+        return formatted;
       }
     }
 
@@ -2879,7 +3059,20 @@ class OrdemCompraComponentsManager {
     }
 
     try {
-      // Se contém vírgulas (formato do array convertido para string)
+      // Preferir ISO yyyy-mm-dd
+      const dateOnly = String(dateString).split("T")[0];
+      const partsDash = dateOnly.split("-");
+      console.log("📅 [formatDate] partsDash:", partsDash);
+      if (partsDash.length === 3) {
+        const [year, month, day] = partsDash;
+        if (year && month && day && year.length === 4) {
+          const resultado = `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
+          console.log("📅 [formatDate] RESULTADO:", resultado);
+          return resultado;
+        }
+      }
+
+      // Suporte a "yyyy,mm,dd"
       if (dateString.includes(",")) {
         const parts = dateString.split(",");
         if (parts.length >= 3) {
@@ -2888,14 +3081,6 @@ class OrdemCompraComponentsManager {
           const day = parts[2].trim();
           return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
         }
-      }
-
-      // Se está no formato yyyy-mm-dd ou yyyy-mm-ddThh:mm:ss
-      const dateOnly = dateString.split("T")[0];
-      const [year, month, day] = dateOnly.split("-");
-
-      if (year && month && day && year.length === 4) {
-        return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
       }
     } catch (error) {
       console.warn("Erro ao formatar data:", dateInput, error);

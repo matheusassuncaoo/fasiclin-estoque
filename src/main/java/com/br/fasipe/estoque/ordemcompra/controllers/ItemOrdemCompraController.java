@@ -59,16 +59,12 @@ public class ItemOrdemCompraController {
     @GetMapping("/{id}")
     @Operation(summary = "Buscar item por ID", description = "Retorna um item de ordem de compra específico pelo seu ID")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Item encontrado com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
-        @ApiResponse(responseCode = "404", description = "Item não encontrado",
-                content = @Content),
-        @ApiResponse(responseCode = "400", description = "ID inválido",
-                content = @Content)
+            @ApiResponse(responseCode = "200", description = "Item encontrado com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
+            @ApiResponse(responseCode = "404", description = "Item não encontrado", content = @Content),
+            @ApiResponse(responseCode = "400", description = "ID inválido", content = @Content)
     })
     public ResponseEntity<ItemOrdemCompra> findById(
-            @Parameter(description = "ID do item de ordem de compra", required = true)
-            @PathVariable @NotNull Integer id) {
+            @Parameter(description = "ID do item de ordem de compra", required = true) @PathVariable @NotNull Integer id) {
         try {
             ItemOrdemCompra item = itemOrdemCompraService.findById(id);
             return ResponseEntity.ok(item);
@@ -87,8 +83,7 @@ public class ItemOrdemCompraController {
     @GetMapping
     @Operation(summary = "Listar todos os itens", description = "Retorna uma lista com todos os itens de ordem de compra")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class)))
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class)))
     })
     public ResponseEntity<List<ItemOrdemCompra>> findAll() {
         List<ItemOrdemCompra> itens = itemOrdemCompraService.findAll();
@@ -104,16 +99,12 @@ public class ItemOrdemCompraController {
     @PostMapping
     @Operation(summary = "Criar novo item", description = "Cria um novo item de ordem de compra")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Item criado com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
-        @ApiResponse(responseCode = "400", description = "Dados inválidos",
-                content = @Content),
-        @ApiResponse(responseCode = "409", description = "Conflito de dados",
-                content = @Content)
+            @ApiResponse(responseCode = "201", description = "Item criado com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Conflito de dados", content = @Content)
     })
     public ResponseEntity<ItemOrdemCompra> create(
-            @Parameter(description = "Dados do item de ordem de compra", required = true)
-            @Valid @RequestBody ItemOrdemCompra item) {
+            @Parameter(description = "Dados do item de ordem de compra", required = true) @Valid @RequestBody ItemOrdemCompra item) {
         try {
             ItemOrdemCompra novoItem = itemOrdemCompraService.create(item);
             return ResponseEntity.status(HttpStatus.CREATED).body(novoItem);
@@ -133,18 +124,13 @@ public class ItemOrdemCompraController {
     @PutMapping
     @Operation(summary = "Atualizar item", description = "Atualiza um item de ordem de compra existente")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Item atualizado com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
-        @ApiResponse(responseCode = "400", description = "Dados inválidos",
-                content = @Content),
-        @ApiResponse(responseCode = "404", description = "Item não encontrado",
-                content = @Content),
-        @ApiResponse(responseCode = "409", description = "Conflito de dados",
-                content = @Content)
+            @ApiResponse(responseCode = "200", description = "Item atualizado com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Item não encontrado", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Conflito de dados", content = @Content)
     })
     public ResponseEntity<ItemOrdemCompra> update(
-            @Parameter(description = "Dados atualizados do item", required = true)
-            @Valid @RequestBody ItemOrdemCompra item) {
+            @Parameter(description = "Dados atualizados do item", required = true) @Valid @RequestBody ItemOrdemCompra item) {
         try {
             ItemOrdemCompra itemAtualizado = itemOrdemCompraService.update(item);
             return ResponseEntity.ok(itemAtualizado);
@@ -166,14 +152,13 @@ public class ItemOrdemCompraController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Remover item", description = "Remove um item de ordem de compra pelo ID")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "Item removido com sucesso"),
-        @ApiResponse(responseCode = "404", description = "Item não encontrado"),
-        @ApiResponse(responseCode = "400", description = "ID inválido"),
-        @ApiResponse(responseCode = "409", description = "Conflito - item não pode ser removido")
+            @ApiResponse(responseCode = "204", description = "Item removido com sucesso"),
+            @ApiResponse(responseCode = "404", description = "Item não encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID inválido"),
+            @ApiResponse(responseCode = "409", description = "Conflito - item não pode ser removido")
     })
     public ResponseEntity<Void> deleteById(
-            @Parameter(description = "ID do item a ser removido", required = true)
-            @PathVariable @NotNull Integer id) {
+            @Parameter(description = "ID do item a ser removido", required = true) @PathVariable @NotNull Integer id) {
         try {
             itemOrdemCompraService.deleteById(id);
             return ResponseEntity.noContent().build();
@@ -195,14 +180,11 @@ public class ItemOrdemCompraController {
     @GetMapping("/ordem-compra/{idOrdemCompra}")
     @Operation(summary = "Buscar itens por ordem de compra", description = "Retorna todos os itens de uma ordem de compra específica")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
-        @ApiResponse(responseCode = "400", description = "ID inválido",
-                content = @Content)
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
+            @ApiResponse(responseCode = "400", description = "ID inválido", content = @Content)
     })
     public ResponseEntity<List<ItemOrdemCompra>> findByIdOrdemCompra(
-            @Parameter(description = "ID da ordem de compra", required = true)
-            @PathVariable @NotNull Integer idOrdemCompra) {
+            @Parameter(description = "ID da ordem de compra", required = true) @PathVariable @NotNull Integer idOrdemCompra) {
         try {
             List<ItemOrdemCompra> itens = itemOrdemCompraService.findByIdOrdemCompra(idOrdemCompra);
             return ResponseEntity.ok(itens);
@@ -220,14 +202,11 @@ public class ItemOrdemCompraController {
     @GetMapping("/produto/{idProduto}")
     @Operation(summary = "Buscar itens por produto", description = "Retorna todos os itens relacionados a um produto específico")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
-        @ApiResponse(responseCode = "400", description = "ID inválido",
-                content = @Content)
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
+            @ApiResponse(responseCode = "400", description = "ID inválido", content = @Content)
     })
     public ResponseEntity<List<ItemOrdemCompra>> findByIdProduto(
-            @Parameter(description = "ID do produto", required = true)
-            @PathVariable @NotNull Integer idProduto) {
+            @Parameter(description = "ID do produto", required = true) @PathVariable @NotNull Integer idProduto) {
         try {
             List<ItemOrdemCompra> itens = itemOrdemCompraService.findByIdProduto(idProduto);
             return ResponseEntity.ok(itens);
@@ -245,14 +224,11 @@ public class ItemOrdemCompraController {
     @GetMapping("/vencimento/{dataVencimento}")
     @Operation(summary = "Buscar itens por data de vencimento", description = "Retorna itens com data de vencimento específica")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
-        @ApiResponse(responseCode = "400", description = "Data inválida",
-                content = @Content)
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
+            @ApiResponse(responseCode = "400", description = "Data inválida", content = @Content)
     })
     public ResponseEntity<List<ItemOrdemCompra>> findByDataVencimento(
-            @Parameter(description = "Data de vencimento (formato: yyyy-MM-dd)", required = true)
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataVencimento) {
+            @Parameter(description = "Data de vencimento (formato: yyyy-MM-dd)", required = true) @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataVencimento) {
         try {
             List<ItemOrdemCompra> itens = itemOrdemCompraService.findByDataVencimento(dataVencimento);
             return ResponseEntity.ok(itens);
@@ -269,8 +245,7 @@ public class ItemOrdemCompraController {
     @GetMapping("/vencidos")
     @Operation(summary = "Buscar itens vencidos", description = "Retorna todos os itens com data de vencimento anterior à data atual")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class)))
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class)))
     })
     public ResponseEntity<List<ItemOrdemCompra>> findItensVencidos() {
         List<ItemOrdemCompra> itens = itemOrdemCompraService.findItensVencidos();
@@ -285,8 +260,7 @@ public class ItemOrdemCompraController {
     @GetMapping("/proximos-vencimento")
     @Operation(summary = "Buscar itens próximos ao vencimento", description = "Retorna itens que vencem nos próximos 30 dias")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class)))
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class)))
     })
     public ResponseEntity<List<ItemOrdemCompra>> findItensProximosVencimento() {
         List<ItemOrdemCompra> itens = itemOrdemCompraService.findItensProximosVencimento();
@@ -303,16 +277,12 @@ public class ItemOrdemCompraController {
     @GetMapping("/valor-unitario")
     @Operation(summary = "Buscar itens por faixa de valor", description = "Retorna itens com valor unitário dentro da faixa especificada")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
-        @ApiResponse(responseCode = "400", description = "Parâmetros inválidos",
-                content = @Content)
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
+            @ApiResponse(responseCode = "400", description = "Parâmetros inválidos", content = @Content)
     })
     public ResponseEntity<List<ItemOrdemCompra>> findByValorUnitarioBetween(
-            @Parameter(description = "Valor mínimo", required = true)
-            @RequestParam @NotNull BigDecimal valorMinimo,
-            @Parameter(description = "Valor máximo", required = true)
-            @RequestParam @NotNull BigDecimal valorMaximo) {
+            @Parameter(description = "Valor mínimo", required = true) @RequestParam @NotNull BigDecimal valorMinimo,
+            @Parameter(description = "Valor máximo", required = true) @RequestParam @NotNull BigDecimal valorMaximo) {
         try {
             List<ItemOrdemCompra> itens = itemOrdemCompraService.findByValorUnitarioBetween(valorMinimo, valorMaximo);
             return ResponseEntity.ok(itens);
@@ -330,12 +300,11 @@ public class ItemOrdemCompraController {
     @GetMapping("/count/ordem-compra/{idOrdemCompra}")
     @Operation(summary = "Contar itens por ordem de compra", description = "Retorna a quantidade de itens de uma ordem de compra")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Contagem retornada com sucesso"),
-        @ApiResponse(responseCode = "400", description = "ID inválido")
+            @ApiResponse(responseCode = "200", description = "Contagem retornada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "ID inválido")
     })
     public ResponseEntity<Long> countByIdOrdemCompra(
-            @Parameter(description = "ID da ordem de compra", required = true)
-            @PathVariable @NotNull Integer idOrdemCompra) {
+            @Parameter(description = "ID da ordem de compra", required = true) @PathVariable @NotNull Integer idOrdemCompra) {
         try {
             Long count = itemOrdemCompraService.countByIdOrdemCompra(idOrdemCompra);
             return ResponseEntity.ok(count);
@@ -353,12 +322,11 @@ public class ItemOrdemCompraController {
     @GetMapping("/valor-total/ordem-compra/{idOrdemCompra}")
     @Operation(summary = "Calcular valor total por ordem de compra", description = "Retorna o valor total dos itens de uma ordem de compra")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Valor total calculado com sucesso"),
-        @ApiResponse(responseCode = "400", description = "ID inválido")
+            @ApiResponse(responseCode = "200", description = "Valor total calculado com sucesso"),
+            @ApiResponse(responseCode = "400", description = "ID inválido")
     })
     public ResponseEntity<BigDecimal> sumValorTotalByIdOrdemCompra(
-            @Parameter(description = "ID da ordem de compra", required = true)
-            @PathVariable @NotNull Integer idOrdemCompra) {
+            @Parameter(description = "ID da ordem de compra", required = true) @PathVariable @NotNull Integer idOrdemCompra) {
         try {
             BigDecimal valorTotal = itemOrdemCompraService.sumValorTotalByIdOrdemCompra(idOrdemCompra);
             return ResponseEntity.ok(valorTotal);
@@ -376,12 +344,11 @@ public class ItemOrdemCompraController {
     @GetMapping("/quantidade-total/ordem-compra/{idOrdemCompra}")
     @Operation(summary = "Somar quantidade por ordem de compra", description = "Retorna a quantidade total dos itens de uma ordem de compra")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Quantidade total calculada com sucesso"),
-        @ApiResponse(responseCode = "400", description = "ID inválido")
+            @ApiResponse(responseCode = "200", description = "Quantidade total calculada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "ID inválido")
     })
     public ResponseEntity<Long> sumQuantidadeByIdOrdemCompra(
-            @Parameter(description = "ID da ordem de compra", required = true)
-            @PathVariable @NotNull Integer idOrdemCompra) {
+            @Parameter(description = "ID da ordem de compra", required = true) @PathVariable @NotNull Integer idOrdemCompra) {
         try {
             Long quantidadeTotal = itemOrdemCompraService.sumQuantidadeByIdOrdemCompra(idOrdemCompra);
             return ResponseEntity.ok(quantidadeTotal);
@@ -399,16 +366,12 @@ public class ItemOrdemCompraController {
     @PutMapping("/atualizar-valor-total")
     @Operation(summary = "Atualizar valor total", description = "Recalcula e atualiza o valor total de um item")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Valor total atualizado com sucesso",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
-        @ApiResponse(responseCode = "400", description = "Dados inválidos",
-                content = @Content),
-        @ApiResponse(responseCode = "404", description = "Item não encontrado",
-                content = @Content)
+            @ApiResponse(responseCode = "200", description = "Valor total atualizado com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Item não encontrado", content = @Content)
     })
     public ResponseEntity<ItemOrdemCompra> atualizarValorTotal(
-            @Parameter(description = "Item a ser atualizado", required = true)
-            @Valid @RequestBody ItemOrdemCompra item) {
+            @Parameter(description = "Item a ser atualizado", required = true) @Valid @RequestBody ItemOrdemCompra item) {
         try {
             ItemOrdemCompra itemAtualizado = itemOrdemCompraService.atualizarValorTotal(item);
             return ResponseEntity.ok(itemAtualizado);

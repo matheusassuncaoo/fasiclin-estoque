@@ -12,13 +12,18 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repository interface para operações de acesso aos dados da entidade Fornecedor.
+ * Repository interface para operações de acesso aos dados da entidade
+ * Fornecedor.
  * 
- * <p>Esta interface estende {@link JpaRepository} para fornecer operações CRUD básicas
- * e define métodos de consulta personalizados para atender às necessidades específicas
+ * <p>
+ * Esta interface estende {@link JpaRepository} para fornecer operações CRUD
+ * básicas
+ * e define métodos de consulta personalizados para atender às necessidades
+ * específicas
  * do sistema de estoque.
  * 
- * <p>Utiliza QueryHints para otimização de performance nas consultas de leitura.
+ * <p>
+ * Utiliza QueryHints para otimização de performance nas consultas de leitura.
  * 
  * @author Sistema de Estoque
  * @since 1.0
@@ -35,8 +40,8 @@ public interface FornecedorRepository extends JpaRepository<Fornecedor, Integer>
      */
     @Query("SELECT f FROM Fornecedor f WHERE f.idPessoa = :idPessoa")
     @QueryHints({
-        @QueryHint(name = "org.hibernate.readOnly", value = "true"),
-        @QueryHint(name = "org.hibernate.fetchSize", value = "50")
+            @QueryHint(name = "org.hibernate.readOnly", value = "true"),
+            @QueryHint(name = "org.hibernate.fetchSize", value = "50")
     })
     Optional<Fornecedor> findByIdPessoa(@Param("idPessoa") Integer idPessoa);
 
@@ -48,8 +53,8 @@ public interface FornecedorRepository extends JpaRepository<Fornecedor, Integer>
      */
     @Query("SELECT f FROM Fornecedor f WHERE LOWER(f.representante) LIKE LOWER(CONCAT('%', :representante, '%'))")
     @QueryHints({
-        @QueryHint(name = "org.hibernate.readOnly", value = "true"),
-        @QueryHint(name = "org.hibernate.fetchSize", value = "50")
+            @QueryHint(name = "org.hibernate.readOnly", value = "true"),
+            @QueryHint(name = "org.hibernate.fetchSize", value = "50")
     })
     List<Fornecedor> findByRepresentanteContaining(@Param("representante") String representante);
 
@@ -61,8 +66,8 @@ public interface FornecedorRepository extends JpaRepository<Fornecedor, Integer>
      */
     @Query("SELECT f FROM Fornecedor f WHERE LOWER(f.descricao) LIKE LOWER(CONCAT('%', :descricao, '%'))")
     @QueryHints({
-        @QueryHint(name = "org.hibernate.readOnly", value = "true"),
-        @QueryHint(name = "org.hibernate.fetchSize", value = "50")
+            @QueryHint(name = "org.hibernate.readOnly", value = "true"),
+            @QueryHint(name = "org.hibernate.fetchSize", value = "50")
     })
     List<Fornecedor> findByDescricaoContaining(@Param("descricao") String descricao);
 
@@ -74,8 +79,8 @@ public interface FornecedorRepository extends JpaRepository<Fornecedor, Integer>
      */
     @Query("SELECT f FROM Fornecedor f WHERE f.contatoRepresentante = :contatoRepresentante")
     @QueryHints({
-        @QueryHint(name = "org.hibernate.readOnly", value = "true"),
-        @QueryHint(name = "org.hibernate.fetchSize", value = "50")
+            @QueryHint(name = "org.hibernate.readOnly", value = "true"),
+            @QueryHint(name = "org.hibernate.fetchSize", value = "50")
     })
     List<Fornecedor> findByContatoRepresentante(@Param("contatoRepresentante") String contatoRepresentante);
 
@@ -86,8 +91,8 @@ public interface FornecedorRepository extends JpaRepository<Fornecedor, Integer>
      */
     @Query("SELECT f FROM Fornecedor f ORDER BY f.representante")
     @QueryHints({
-        @QueryHint(name = "org.hibernate.readOnly", value = "true"),
-        @QueryHint(name = "org.hibernate.fetchSize", value = "50")
+            @QueryHint(name = "org.hibernate.readOnly", value = "true"),
+            @QueryHint(name = "org.hibernate.fetchSize", value = "50")
     })
     List<Fornecedor> findAllOrderByRepresentante();
 
@@ -99,7 +104,7 @@ public interface FornecedorRepository extends JpaRepository<Fornecedor, Integer>
      */
     @Query("SELECT COUNT(f) > 0 FROM Fornecedor f WHERE f.idPessoa = :idPessoa")
     @QueryHints({
-        @QueryHint(name = "org.hibernate.readOnly", value = "true")
+            @QueryHint(name = "org.hibernate.readOnly", value = "true")
     })
     boolean existsByIdPessoa(@Param("idPessoa") Integer idPessoa);
 }

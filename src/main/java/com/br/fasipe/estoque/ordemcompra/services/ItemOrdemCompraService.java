@@ -20,19 +20,25 @@ import jakarta.validation.constraints.NotNull;
 /**
  * Service para operações de negócio da entidade ItemOrdemCompra.
  * 
- * <p>Esta classe implementa a camada de serviço para o módulo de Itens de Ordem de Compra,
- * fornecendo operações CRUD completas com validações de negócio, tratamento de exceções
- * e métodos de consulta otimizados para gestão de itens de compra.</p>
+ * <p>
+ * Esta classe implementa a camada de serviço para o módulo de Itens de Ordem de
+ * Compra,
+ * fornecendo operações CRUD completas com validações de negócio, tratamento de
+ * exceções
+ * e métodos de consulta otimizados para gestão de itens de compra.
+ * </p>
  * 
- * <p><strong>Funcionalidades principais:</strong></p>
+ * <p>
+ * <strong>Funcionalidades principais:</strong>
+ * </p>
  * <ul>
- *   <li>CRUD completo (Create, Read, Update, Delete)</li>
- *   <li>Consultas por ordem de compra, produto e data de vencimento</li>
- *   <li>Operações de cálculo de valores e quantidades</li>
- *   <li>Alertas de itens vencidos e próximos ao vencimento</li>
- *   <li>Validações de integridade de dados</li>
- *   <li>Tratamento robusto de exceções</li>
- *   <li>Transações controladas</li>
+ * <li>CRUD completo (Create, Read, Update, Delete)</li>
+ * <li>Consultas por ordem de compra, produto e data de vencimento</li>
+ * <li>Operações de cálculo de valores e quantidades</li>
+ * <li>Alertas de itens vencidos e próximos ao vencimento</li>
+ * <li>Validações de integridade de dados</li>
+ * <li>Tratamento robusto de exceções</li>
+ * <li>Transações controladas</li>
  * </ul>
  * 
  * @author Sistema Fasiclin - Módulo Estoque
@@ -41,16 +47,16 @@ import jakarta.validation.constraints.NotNull;
  */
 @Service
 public class ItemOrdemCompraService {
-    
+
     @Autowired
     private ItemOrdemCompraRepository itemOrdemCompraRepository;
-    
+
     /**
      * Busca um item de ordem de compra por ID.
      * 
      * @param id ID do item de ordem de compra (não pode ser nulo)
      * @return ItemOrdemCompra encontrado
-     * @throws EntityNotFoundException se o item não for encontrado
+     * @throws EntityNotFoundException  se o item não for encontrado
      * @throws IllegalArgumentException se o ID for nulo
      */
     public ItemOrdemCompra findById(@NotNull Integer id) {
@@ -58,10 +64,10 @@ public class ItemOrdemCompraService {
             throw new IllegalArgumentException("ID não pode ser nulo");
         }
         return itemOrdemCompraRepository.findByIdItemOrd(id)
-            .orElseThrow(() -> new EntityNotFoundException(
-                "Item de ordem de compra não encontrado com ID: " + id));
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Item de ordem de compra não encontrado com ID: " + id));
     }
-    
+
     /**
      * Busca todos os itens de ordem de compra.
      * 
@@ -74,19 +80,21 @@ public class ItemOrdemCompraService {
     /**
      * Cria um novo item de ordem de compra.
      * 
-     * <p><strong>Validações aplicadas:</strong></p>
+     * <p>
+     * <strong>Validações aplicadas:</strong>
+     * </p>
      * <ul>
-     *   <li>Objeto não pode ser nulo</li>
-     *   <li>ID deve ser nulo (será gerado automaticamente)</li>
-     *   <li>ID da ordem de compra é obrigatório</li>
-     *   <li>ID do produto é obrigatório</li>
-     *   <li>Quantidade deve ser positiva</li>
-     *   <li>Valor unitário deve ser positivo</li>
+     * <li>Objeto não pode ser nulo</li>
+     * <li>ID deve ser nulo (será gerado automaticamente)</li>
+     * <li>ID da ordem de compra é obrigatório</li>
+     * <li>ID do produto é obrigatório</li>
+     * <li>Quantidade deve ser positiva</li>
+     * <li>Valor unitário deve ser positivo</li>
      * </ul>
      * 
      * @param obj Item de ordem de compra a ser criado (validado com @Valid)
      * @return ItemOrdemCompra criado com ID gerado
-     * @throws IllegalArgumentException se validações falharem
+     * @throws IllegalArgumentException        se validações falharem
      * @throws DataIntegrityViolationException se houver violação de integridade
      */
     @Transactional
@@ -94,40 +102,42 @@ public class ItemOrdemCompraService {
         if (obj == null) {
             throw new IllegalArgumentException("Item de ordem de compra não pode ser nulo");
         }
-        
+
         if (obj.getIdItemOrd() != null) {
             throw new IllegalArgumentException("ID deve ser nulo para criação de novo item");
         }
-        
+
         // Validações de negócio adicionais
         validateBusinessRules(obj);
-        
+
         // Calcula o valor total automaticamente
         obj.inicializarValorTotal();
-        
+
         try {
             return itemOrdemCompraRepository.save(obj);
         } catch (DataIntegrityViolationException e) {
             throw new DataIntegrityViolationException(
-                "Erro de integridade ao criar item de ordem de compra: " + e.getMessage(), e);
+                    "Erro de integridade ao criar item de ordem de compra: " + e.getMessage(), e);
         }
     }
 
     /**
      * Atualiza um item de ordem de compra existente.
      * 
-     * <p><strong>Validações aplicadas:</strong></p>
+     * <p>
+     * <strong>Validações aplicadas:</strong>
+     * </p>
      * <ul>
-     *   <li>Objeto não pode ser nulo</li>
-     *   <li>ID deve existir no banco</li>
-     *   <li>Campos obrigatórios devem estar preenchidos</li>
-     *   <li>Regras de negócio específicas</li>
+     * <li>Objeto não pode ser nulo</li>
+     * <li>ID deve existir no banco</li>
+     * <li>Campos obrigatórios devem estar preenchidos</li>
+     * <li>Regras de negócio específicas</li>
      * </ul>
      * 
      * @param obj Item de ordem de compra a ser atualizado (validado com @Valid)
      * @return ItemOrdemCompra atualizado
-     * @throws EntityNotFoundException se o item não existir
-     * @throws IllegalArgumentException se validações falharem
+     * @throws EntityNotFoundException         se o item não existir
+     * @throws IllegalArgumentException        se validações falharem
      * @throws DataIntegrityViolationException se houver violação de integridade
      */
     @Transactional
@@ -135,61 +145,63 @@ public class ItemOrdemCompraService {
         if (obj == null) {
             throw new IllegalArgumentException("Item de ordem de compra não pode ser nulo");
         }
-        
+
         if (obj.getIdItemOrd() == null) {
             throw new IllegalArgumentException("ID é obrigatório para atualização");
         }
-        
+
         // Verifica se o item existe
         ItemOrdemCompra existingItem = findById(obj.getIdItemOrd());
-        
+
         // Validações de negócio para atualização
         validateUpdateRules(obj, existingItem);
-        
+
         // Recalcula o valor total automaticamente
         obj.inicializarValorTotal();
-        
+
         try {
             return itemOrdemCompraRepository.save(obj);
         } catch (DataIntegrityViolationException e) {
             throw new DataIntegrityViolationException(
-                "Erro de integridade ao atualizar item de ordem de compra: " + e.getMessage(), e);
+                    "Erro de integridade ao atualizar item de ordem de compra: " + e.getMessage(), e);
         }
     }
 
     /**
      * Deleta um item de ordem de compra por ID.
      * 
-     * <p><strong>Validações aplicadas:</strong></p>
+     * <p>
+     * <strong>Validações aplicadas:</strong>
+     * </p>
      * <ul>
-     *   <li>ID não pode ser nulo</li>
-     *   <li>Item deve existir no banco</li>
-     *   <li>Não pode deletar se houver movimentações relacionadas</li>
+     * <li>ID não pode ser nulo</li>
+     * <li>Item deve existir no banco</li>
+     * <li>Não pode deletar se houver movimentações relacionadas</li>
      * </ul>
      * 
      * @param id ID do item de ordem de compra a ser deletado
-     * @throws EntityNotFoundException se o item não existir
+     * @throws EntityNotFoundException  se o item não existir
      * @throws IllegalArgumentException se o ID for nulo
-     * @throws IllegalStateException se o item não puder ser deletado
+     * @throws IllegalStateException    se o item não puder ser deletado
      */
     @Transactional
     public void deleteById(@NotNull Integer id) {
         if (id == null) {
             throw new IllegalArgumentException("ID não pode ser nulo");
         }
-        
+
         ItemOrdemCompra item = findById(id);
-        
+
         // Validação de negócio: verificar se pode ser deletado
         validateDeletion(item);
-        
+
         try {
             itemOrdemCompraRepository.deleteById(id);
         } catch (EmptyResultDataAccessException e) {
             throw new EntityNotFoundException("Item de ordem de compra não encontrado com ID: " + id);
         }
     }
-    
+
     /**
      * Deleta um item de ordem de compra por objeto.
      * 
@@ -201,10 +213,10 @@ public class ItemOrdemCompraService {
         if (obj == null) {
             throw new IllegalArgumentException("Item de ordem de compra não pode ser nulo");
         }
-        
+
         deleteById(obj.getIdItemOrd());
     }
-    
+
     /**
      * Busca itens de ordem de compra por ID da ordem de compra.
      * 
@@ -217,7 +229,7 @@ public class ItemOrdemCompraService {
         }
         return itemOrdemCompraRepository.findByIdOrdComp(idOrdemCompra);
     }
-    
+
     /**
      * Busca itens de ordem de compra por ID do produto.
      * 
@@ -230,7 +242,7 @@ public class ItemOrdemCompraService {
         }
         return itemOrdemCompraRepository.findByIdProduto(idProduto);
     }
-    
+
     /**
      * Busca itens por data de vencimento específica.
      * 
@@ -243,27 +255,27 @@ public class ItemOrdemCompraService {
         }
         return itemOrdemCompraRepository.findByDataVencimento(dataVencimento);
     }
-    
+
     /**
      * Busca itens por faixa de datas de vencimento.
      * 
      * @param dataInicio Data inicial
-     * @param dataFim Data final
+     * @param dataFim    Data final
      * @return Lista de itens na faixa de datas
      */
-    public List<ItemOrdemCompra> findByDataVencimentoBetween(@NotNull LocalDate dataInicio, 
-                                                            @NotNull LocalDate dataFim) {
+    public List<ItemOrdemCompra> findByDataVencimentoBetween(@NotNull LocalDate dataInicio,
+            @NotNull LocalDate dataFim) {
         if (dataInicio == null || dataFim == null) {
             throw new IllegalArgumentException("Datas não podem ser nulas");
         }
-        
+
         if (dataInicio.isAfter(dataFim)) {
             throw new IllegalArgumentException("Data inicial deve ser anterior à data final");
         }
-        
+
         return itemOrdemCompraRepository.findByDataVencimentoBetween(dataInicio, dataFim);
     }
-    
+
     /**
      * Busca itens vencidos.
      * 
@@ -272,7 +284,7 @@ public class ItemOrdemCompraService {
     public List<ItemOrdemCompra> findItensVencidos() {
         return itemOrdemCompraRepository.findItensVencidos();
     }
-    
+
     /**
      * Busca itens próximos ao vencimento (próximos 30 dias).
      * 
@@ -282,7 +294,7 @@ public class ItemOrdemCompraService {
         LocalDate dataLimite = LocalDate.now().plusDays(30);
         return itemOrdemCompraRepository.findItensProximosVencimento(dataLimite);
     }
-    
+
     /**
      * Busca itens por faixa de valor unitário.
      * 
@@ -290,23 +302,23 @@ public class ItemOrdemCompraService {
      * @param valorMaximo Valor unitário máximo
      * @return Lista de itens na faixa de valor
      */
-    public List<ItemOrdemCompra> findByValorUnitarioBetween(@NotNull BigDecimal valorMinimo, 
-                                                           @NotNull BigDecimal valorMaximo) {
+    public List<ItemOrdemCompra> findByValorUnitarioBetween(@NotNull BigDecimal valorMinimo,
+            @NotNull BigDecimal valorMaximo) {
         if (valorMinimo == null || valorMaximo == null) {
             throw new IllegalArgumentException("Valores não podem ser nulos");
         }
-        
+
         if (valorMinimo.compareTo(BigDecimal.ZERO) < 0 || valorMaximo.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Valores devem ser positivos");
         }
-        
+
         if (valorMinimo.compareTo(valorMaximo) > 0) {
             throw new IllegalArgumentException("Valor mínimo deve ser menor que o máximo");
         }
-        
+
         return itemOrdemCompraRepository.findByValorBetween(valorMinimo, valorMaximo);
     }
-    
+
     /**
      * Conta itens por ordem de compra.
      * 
@@ -319,7 +331,7 @@ public class ItemOrdemCompraService {
         }
         return itemOrdemCompraRepository.countByIdOrdComp(idOrdemCompra);
     }
-    
+
     /**
      * Soma valor total dos itens por ordem de compra.
      * 
@@ -333,7 +345,7 @@ public class ItemOrdemCompraService {
         BigDecimal total = itemOrdemCompraRepository.sumValorTotalByIdOrdComp(idOrdemCompra);
         return total != null ? total : BigDecimal.ZERO;
     }
-    
+
     /**
      * Soma quantidade total dos itens por ordem de compra.
      * 
@@ -347,7 +359,7 @@ public class ItemOrdemCompraService {
         Long total = itemOrdemCompraRepository.sumQuantidadeByIdOrdComp(idOrdemCompra);
         return total != null ? total : 0L;
     }
-    
+
     /**
      * Calcula o valor total de um item (quantidade * valor unitário).
      * 
@@ -358,14 +370,14 @@ public class ItemOrdemCompraService {
         if (item == null) {
             throw new IllegalArgumentException("Item não pode ser nulo");
         }
-        
+
         if (item.getQntd() == null || item.getValor() == null) {
             return BigDecimal.ZERO;
         }
-        
+
         return item.getValor().multiply(new BigDecimal(item.getQntd()));
     }
-    
+
     /**
      * Atualiza o valor total de um item baseado na quantidade e valor unitário.
      * 
@@ -377,13 +389,13 @@ public class ItemOrdemCompraService {
         if (item == null) {
             throw new IllegalArgumentException("Item não pode ser nulo");
         }
-        
+
         // Calcula e atualiza o valor total usando o método do modelo
         item.inicializarValorTotal();
-        
+
         return update(item);
     }
-    
+
     /**
      * Valida regras de negócio gerais para criação/atualização.
      * 
@@ -395,32 +407,32 @@ public class ItemOrdemCompraService {
         if (item.getIdOrdComp() == null) {
             throw new IllegalArgumentException("ID da ordem de compra é obrigatório");
         }
-        
+
         // Validação: ID do produto é obrigatório
         if (item.getIdProduto() == null) {
             throw new IllegalArgumentException("ID do produto é obrigatório");
         }
-        
+
         // Validação: quantidade deve ser positiva
         if (item.getQntd() != null && item.getQntd() <= 0) {
             throw new IllegalArgumentException("Quantidade deve ser positiva");
         }
-        
+
         // Validação: valor unitário deve ser positivo
         if (item.getValor() != null && item.getValor().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Valor unitário deve ser positivo");
         }
-        
+
         // Validação: data de vencimento não pode ser no passado
         if (item.getDataVenc() != null && item.getDataVenc().isBefore(LocalDate.now())) {
             throw new IllegalArgumentException("Data de vencimento não pode ser no passado");
         }
     }
-    
+
     /**
      * Valida regras específicas para atualização.
      * 
-     * @param novoItem Nova versão do item
+     * @param novoItem      Nova versão do item
      * @param itemExistente Item existente no banco
      * @throws IllegalStateException se alguma regra de atualização for violada
      */
@@ -428,19 +440,19 @@ public class ItemOrdemCompraService {
         // Validação: não permitir alterar ID da ordem de compra após criação
         if (!itemExistente.getIdOrdComp().equals(novoItem.getIdOrdComp())) {
             throw new IllegalStateException(
-                "ID da ordem de compra não pode ser alterado após criação");
+                    "ID da ordem de compra não pode ser alterado após criação");
         }
-        
+
         // Validação: não permitir alterar ID do produto após criação
         if (!itemExistente.getIdProduto().equals(novoItem.getIdProduto())) {
             throw new IllegalStateException(
-                "ID do produto não pode ser alterado após criação");
+                    "ID do produto não pode ser alterado após criação");
         }
-        
+
         // Aplicar validações gerais
         validateBusinessRules(novoItem);
     }
-    
+
     /**
      * Valida se um item pode ser deletado.
      * 
@@ -450,77 +462,105 @@ public class ItemOrdemCompraService {
     private void validateDeletion(ItemOrdemCompra item) {
         // Validação: verificar se há movimentações relacionadas
         // Esta validação pode ser expandida conforme necessário
-        
+
         // Por enquanto, permitir deleção sempre
         // Futuras implementações podem incluir verificações de integridade referencial
     }
-    
+
     /**
      * Salva ou atualiza uma lista de itens para uma ordem de compra específica.
      * 
-     * <p>Este método permite gerenciar todos os itens de uma ordem de compra de forma
-     * transacional. Itens existentes são atualizados e novos itens são criados.</p>
+     * <p>
+     * Este método permite gerenciar todos os itens de uma ordem de compra de forma
+     * transacional. Itens existentes são atualizados e novos itens são criados.
+     * </p>
      * 
      * @param idOrdemCompra ID da ordem de compra
-     * @param itens Lista de itens para salvar/atualizar
+     * @param itens         Lista de itens para salvar/atualizar
      * @return Lista de itens salvos/atualizados
      * @throws IllegalArgumentException se parâmetros forem inválidos
-     * @throws EntityNotFoundException se ordem de compra não existir
+     * @throws EntityNotFoundException  se ordem de compra não existir
      */
     @Transactional
-    public List<ItemOrdemCompra> salvarItensOrdem(@NotNull Integer idOrdemCompra, 
-                                                  @NotNull List<ItemOrdemCompra> itens) {
+    public List<ItemOrdemCompra> salvarItensOrdem(@NotNull Integer idOrdemCompra,
+            @NotNull List<ItemOrdemCompra> itens) {
         if (idOrdemCompra == null) {
             throw new IllegalArgumentException("ID da ordem de compra não pode ser nulo");
         }
-        
+
         if (itens == null) {
             throw new IllegalArgumentException("Lista de itens não pode ser nula");
         }
-        
+
         // Configura o ID da ordem de compra em todos os itens
         itens.forEach(item -> {
             item.setIdOrdComp(idOrdemCompra);
             // Calcula valor total automaticamente
             item.inicializarValorTotal();
         });
-        
+
         // Salva todos os itens
         return itemOrdemCompraRepository.saveAll(itens);
     }
-    
+
     /**
      * Remove todos os itens de uma ordem de compra e salva os novos itens.
      * 
-     * <p>Operação transacional que substitui completamente os itens de uma ordem.</p>
+     * <p>
+     * Operação transacional que substitui completamente os itens de uma ordem.
+     * </p>
      * 
      * @param idOrdemCompra ID da ordem de compra
-     * @param novosItens Lista de novos itens
+     * @param novosItens    Lista de novos itens
      * @return Lista de itens salvos
      */
     @Transactional
     public List<ItemOrdemCompra> substituirItensOrdem(@NotNull Integer idOrdemCompra,
-                                                      @NotNull List<ItemOrdemCompra> novosItens) {
+            @NotNull List<ItemOrdemCompra> novosItens) {
         if (idOrdemCompra == null) {
             throw new IllegalArgumentException("ID da ordem de compra não pode ser nulo");
         }
-        
+
         if (novosItens == null) {
             throw new IllegalArgumentException("Lista de itens não pode ser nula");
         }
-        
+
         // Remove todos os itens existentes
         List<ItemOrdemCompra> itensExistentes = findByIdOrdemCompra(idOrdemCompra);
         itemOrdemCompraRepository.deleteAll(itensExistentes);
-        
+
         // Configura os novos itens
         novosItens.forEach(item -> {
             item.setIdItemOrd(null); // Garante que será criado como novo
             item.setIdOrdComp(idOrdemCompra);
             item.inicializarValorTotal();
         });
-        
+
         // Salva os novos itens
         return itemOrdemCompraRepository.saveAll(novosItens);
+    }
+    
+    /**
+     * Remove todos os itens de uma ordem de compra específica.
+     * 
+     * @param idOrdemCompra ID da ordem de compra cujos itens serão removidos
+     * @throws IllegalArgumentException se o ID for nulo
+     */
+    @Transactional
+    public void deleteAllByOrdemId(@NotNull Integer idOrdemCompra) {
+        if (idOrdemCompra == null) {
+            throw new IllegalArgumentException("ID da ordem de compra não pode ser nulo");
+        }
+        
+        // Buscar todos os itens da ordem
+        List<ItemOrdemCompra> itens = findByIdOrdemCompra(idOrdemCompra);
+        
+        if (!itens.isEmpty()) {
+            System.out.println("[ItemOrdemCompraService] Removendo " + itens.size() + " itens da ordem " + idOrdemCompra);
+            itemOrdemCompraRepository.deleteAll(itens);
+            System.out.println("[ItemOrdemCompraService] Itens removidos com sucesso da ordem " + idOrdemCompra);
+        } else {
+            System.out.println("[ItemOrdemCompraService] Nenhum item encontrado para a ordem " + idOrdemCompra);
+        }
     }
 }

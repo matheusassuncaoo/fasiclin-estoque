@@ -116,6 +116,9 @@ class OrdemCompraManager {
     document.addEventListener("ordemcompra:ordem:bulkDelete", (e) => {
       this.handleBulkDelete(e.detail.ids);
     });
+    document.addEventListener("ordemcompra:ordem:deactivateBulk", (e) => {
+      this.handleBulkDeactivate(e.detail.ids, e.detail.credentials);
+    });
 
     document.addEventListener("ordemcompra:table:sort", (e) => {
       this.handleSort(e.detail);
@@ -129,28 +132,28 @@ class OrdemCompraManager {
     });
 
     // Event listeners para modal de informações
-    const btnInfoSistema = document.getElementById("btnInfoSistema");
-    const modalInfo = document.getElementById("modalInfo");
-    const btnCloseInfo = document.getElementById("btnCloseInfo");
+  const btnInfoSistema = document.getElementById("btnInfoSistema");
+  const modalInfo = document.getElementById("modalInfo");
+  const btnCloseInfo = document.getElementById("btnCloseInfo");
+  const btnCloseInfoFooter = document.getElementById("btnCloseInfoFooter");
 
     if (btnInfoSistema && modalInfo) {
       btnInfoSistema.addEventListener("click", () => {
         this.updateInfoModalStats();
-        modalInfo.style.display = "flex";
+        modalInfo.classList.add("active");
       });
     }
 
+    const closeInfo = () => modalInfo && modalInfo.classList.remove("active");
     if (btnCloseInfo && modalInfo) {
-      btnCloseInfo.addEventListener("click", () => {
-        modalInfo.style.display = "none";
-      });
+      btnCloseInfo.addEventListener("click", closeInfo);
     }
-
+    if (btnCloseInfoFooter && modalInfo) {
+      btnCloseInfoFooter.addEventListener("click", closeInfo);
+    }
     if (modalInfo) {
       modalInfo.addEventListener("click", (e) => {
-        if (e.target === modalInfo) {
-          modalInfo.style.display = "none";
-        }
+        if (e.target === modalInfo) closeInfo();
       });
     }
 
@@ -190,6 +193,7 @@ class OrdemCompraManager {
    * Carrega ordens de compra do backend
    */
   async loadOrdens() {
+    console.log("[DEBUG] loadOrdens - Iniciando recarregamento da tabela");
     this.setLoading(true);
 
     try {
@@ -197,11 +201,34 @@ class OrdemCompraManager {
         ? this.componentManager.getPaginationParams()
         : {};
 
+      console.log("[DEBUG] loadOrdens - Parâmetros:", params);
+      
       // Buscar do backend
       const response = await apiManager.getOrdensCompra(params);
-      this.ordensCompra = Array.isArray(response)
+      const rawList = Array.isArray(response)
         ? response
         : response.content || [];
+
+      // Normalizar campos de data para ISO (yyyy-mm-dd) para evitar inconsistências
+      this.ordensCompra = rawList.map((o) => this.normalizeOrderDates(o));
+
+      console.log("📊 [loadOrdens] ORDENS CARREGADAS DO BACKEND:");
+      console.log("📦 Total de ordens:", this.ordensCompra.length);
+      
+      // Log das primeiras 3 ordens para debug
+      this.ordensCompra.slice(0, 3).forEach((ordem, index) => {
+        console.log(`📋 Ordem ${index + 1}:`, {
+          id: ordem.id,
+          status: ordem.statusOrdemCompra,
+          dataPrev: ordem.dataPrev,
+          dataOrdem: ordem.dataOrdem,
+          dataEntre: ordem.dataEntre,
+          valor: ordem.valor
+        });
+      });
+      
+      // Adicionar um botão temporário de debug
+      this.addDebugButton();
 
       // Atualizar cache
       this.updateCache();
@@ -211,8 +238,10 @@ class OrdemCompraManager {
     } catch (error) {
       console.error("[OrdemCompraManager] Erro ao carregar ordens:", error);
 
-        // Mensagem mais simples para o usuário final
-        notify.error('Não foi possível carregar as ordens agora. Tente novamente em instantes.');
+      // Mensagem mais simples para o usuário final
+      notify.error(
+        "Não foi possível carregar as ordens agora. Tente novamente em instantes."
+      );
 
       // Mostrar estado vazio com instruções
       this.showConnectionError();
@@ -220,6 +249,55 @@ class OrdemCompraManager {
     } finally {
       this.setLoading(false);
     }
+  }
+
+  /**
+   * Normaliza os campos de data de uma ordem para strings ISO (yyyy-mm-dd)
+   * Aceita valores vindos como Array [yyyy, mm, dd], string dd/mm/yyyy, string com vírgulas ou ISO já válido
+   * @param {Object} ordem
+   * @returns {Object} nova ordem com datas normalizadas
+   */
+  normalizeOrderDates(ordem) {
+    if (!ordem || typeof ordem !== "object") return ordem;
+
+    const toISO = (value) => {
+      if (!value) return null;
+      // Já ISO
+      if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+        return value.split("T")[0];
+      }
+      // Array [yyyy, mm, dd]
+      if (Array.isArray(value) && value.length >= 3) {
+        const [y, m, d] = value;
+        const mm = String(m).padStart(2, "0");
+        const dd = String(d).padStart(2, "0");
+        return `${String(y).padStart(4, "0")}-${mm}-${dd}`;
+      }
+      // dd/mm/yyyy
+      if (typeof value === "string" && value.includes("/")) {
+        const [d, m, y] = value.split("/");
+        if (y && m && d) return `${y.padStart(4, "0")}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+      }
+      // "yyyy,mm,dd"
+      if (typeof value === "string" && value.includes(",")) {
+        const parts = value.split(",").map((p) => p.trim());
+        if (parts.length >= 3) {
+          const [y, m, d] = parts;
+          return `${y.padStart(4, "0")}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+        }
+      }
+      // Fallback para Date parsing seguro
+      const dt = new Date(value);
+      if (!isNaN(dt.getTime())) return dt.toISOString().split("T")[0];
+      return null;
+    };
+
+    return {
+      ...ordem,
+      dataPrev: toISO(ordem.dataPrev),
+      dataOrdem: toISO(ordem.dataOrdem),
+      dataEntre: toISO(ordem.dataEntre),
+    };
   }
 
   /**
@@ -258,7 +336,7 @@ class OrdemCompraManager {
           "Erro de conexão: Verifique se o backend está rodando em http://localhost:8080";
       } else if (error.message.includes("CORS")) {
         errorMessage =
-          "Erro de CORS: Configure o backend para permitir requisições do frontend";
+          "Não foi possível conectar ao sistema. Verifique se o servidor está funcionando.";
       } else if (error.message.includes("HTTP 400")) {
         errorMessage =
           "Dados inválidos: Verifique se todos os campos estão preenchidos corretamente";
@@ -288,13 +366,61 @@ class OrdemCompraManager {
     if (this.componentManager) this.componentManager.showFormLoading(true);
 
     try {
+      console.log("[DEBUG] updateOrdem - ID:", id);
+      console.log("[DEBUG] updateOrdem - dados para envio:", ordemData);
+      
       // Atualizar no backend
       const ordemAtualizada = await apiManager.updateOrdemCompra(id, ordemData);
+      console.log("[DEBUG] updateOrdem - resposta do backend:", ordemAtualizada);
+      
       notify.success("Ordem de compra atualizada com sucesso!");
 
-      // Atualizar interface
-      await this.loadOrdens();
+      // Normalizar as datas da ordem atualizada retornada pelo backend
+      const ordemNormalizada = this.normalizeOrderDates(ordemAtualizada);
+      console.log("[DEBUG] updateOrdem - ordem normalizada:", ordemNormalizada);
+
+      // Fechar modal primeiro para evitar confusão
       if (this.componentManager) this.componentManager.closeModal();
+
+      // Atualização básica sem modificações complexas
+      
+      // Pegar as datas que foram enviadas no payload original
+      const datasPrevistas = {
+        dataPrev: ordemData.dataPrev,
+        dataOrdem: ordemData.dataOrdem, 
+        dataEntre: ordemData.dataEntre
+      };
+      
+      console.log("� Datas que o usuário REALMENTE quer:", datasPrevistas);
+      
+      // Buscar a ordem atualizada do backend
+      const ordemAtualizadaCompleta = await apiManager.getOrdemCompra(id);
+      console.log("📥 Ordem do backend (pode estar errada):", ordemAtualizadaCompleta);
+      
+      // FORÇAR as datas corretas
+      const ordemCorrigida = {
+        ...ordemAtualizadaCompleta,
+        dataPrev: datasPrevistas.dataPrev,
+        dataOrdem: datasPrevistas.dataOrdem,
+        dataEntre: datasPrevistas.dataEntre
+      };
+      
+      console.log("🔧 Ordem CORRIGIDA com as datas do usuário:", ordemCorrigida);
+      
+      // Encontrar e substituir a ordem na lista local
+      const index = this.ordensCompra.findIndex(o => o.id === id);
+      if (index !== -1) {
+        this.ordensCompra[index] = this.normalizeOrderDates(ordemCorrigida);
+        console.log("✅ Ordem FORÇADA na lista local:", this.ordensCompra[index]);
+      }
+
+      // Atualizar a tabela com os dados mais recentes
+      await this.loadOrdens();
+      
+      // Destacar a linha atualizada na tabela
+      this.highlightUpdatedRow(id);
+      
+      console.log("[DEBUG] updateOrdem - Atualização concluída com sucesso");
     } catch (error) {
       console.error("[OrdemCompraManager] Erro ao atualizar ordem:", error);
 
@@ -303,10 +429,12 @@ class OrdemCompraManager {
         error.message.includes("NetworkError")
       ) {
         notify.error(
-          "Erro de CORS: Configure o backend para permitir requisições do frontend"
+          "Não foi possível conectar ao sistema. Verifique se o servidor está funcionando."
         );
+      } else if (error.message.includes("concluída") || error.message.includes("422")) {
+        notify.warning("Esta ordem já foi concluída e não pode ser editada");
       } else {
-        notify.error(`Erro ao atualizar ordem de compra: ${error.message}`);
+        notify.error("Erro ao atualizar ordem de compra. Tente novamente.");
       }
     } finally {
       this.setLoading(false);
@@ -407,6 +535,61 @@ class OrdemCompraManager {
     }
   }
 
+  /**
+   * Exclui múltiplas ordens de compra com autenticação
+   * @param {Array<number>} ids - Array com IDs das ordens
+   * @param {{login:string, senha:string, motivo?:string}} credentials
+   */
+  async handleBulkDeactivate(ids, credentials) {
+    if (!ids || ids.length === 0) return;
+
+    this.setLoading(true);
+    const loadingNotification = notify.loading(
+      `Removendo ${ids.length} ordem(ns) selecionada(s)...`
+    );
+
+    try {
+      const results = await apiManager.deleteMultipleOrdensCompraWithAuth(
+        ids,
+        credentials
+      );
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      results.forEach((result) => {
+        if (result && result.error) errorCount++;
+        else successCount++;
+      });
+
+      notify.hide(loadingNotification);
+
+      if (successCount > 0) {
+        notify.success(`${successCount} ordem(ns) removida(s) com sucesso!`);
+      }
+      if (errorCount > 0) {
+        notify.warning(
+          `${errorCount} ordem(ns) não puderam ser removidas. Verifique suas permissões ou tente novamente.`
+        );
+      }
+
+      if (this.componentManager) {
+        this.componentManager.clearSelections();
+        this.componentManager.closeCredentialsModal();
+      }
+      await this.loadOrdens();
+    } catch (error) {
+      notify.hide(loadingNotification);
+      console.error("[OrdemCompraManager] Erro na remoção em massa com auth:", error);
+      notify.error(
+        "Falha ao remover ordens selecionadas. Verifique suas credenciais e tente novamente."
+      );
+      if (this.componentManager) this.componentManager.showCredentialsLoading(false);
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
   // ============================================
   // MANIPULADORES DE EVENTOS
   // ============================================
@@ -417,6 +600,9 @@ class OrdemCompraManager {
    */
   async handleFormSubmit(detail) {
     const { data, isEdit } = detail;
+
+    console.log("[DEBUG] handleFormSubmit - isEdit:", isEdit);
+    console.log("[DEBUG] handleFormSubmit - data:", data);
 
     if (isEdit) {
       await this.updateOrdem(data.id, data);
@@ -566,7 +752,8 @@ class OrdemCompraManager {
     try {
       // Buscar no backend
       const ordem = await apiManager.getOrdemCompra(id);
-      return ordem;
+      // Normalizar datas para uso consistente no frontend
+      return this.normalizeOrderDates(ordem);
     } catch (error) {
       console.error(
         "[OrdemCompraManager] Erro ao buscar ordem no backend:",
@@ -623,6 +810,93 @@ class OrdemCompraManager {
       }
       return 0;
     });
+  }
+
+  /**
+   * Destaca uma linha atualizada na tabela
+   * @param {number} ordemId - ID da ordem que foi atualizada
+   */
+  highlightUpdatedRow(ordemId) {
+    // Aguardar um pouco para garantir que a tabela foi renderizada
+    setTimeout(() => {
+      const row = document.querySelector(`tr[data-id="${ordemId}"]`);
+      if (row) {
+        console.log("[DEBUG] highlightUpdatedRow - Destacando linha da ordem:", ordemId);
+        
+        // Adicionar classe de destaque
+        row.style.backgroundColor = '#d4edda';
+        row.style.transition = 'background-color 0.3s ease';
+        
+        // Remover destaque após alguns segundos
+        setTimeout(() => {
+          if (row) {
+            row.style.backgroundColor = '';
+            console.log("[DEBUG] highlightUpdatedRow - Removendo destaque da linha:", ordemId);
+          }
+        }, 3000);
+      } else {
+        console.warn("[DEBUG] highlightUpdatedRow - Linha não encontrada para ordem:", ordemId);
+      }
+    }, 100);
+  }
+
+  /**
+   * Adiciona botão de debug temporário
+   */
+  addDebugButton() {
+    // Verificar se já existe
+    if (document.getElementById('debugButton')) return;
+    
+    const debugButton = document.createElement('button');
+    
+    
+    debugButton.onclick = async () => {
+      console.log("🐛 DEBUG MANUAL - TESTE COMPLETO DE ATUALIZAÇÃO");
+      
+      // 1. Verificar se há ordens
+      if (this.ordensCompra.length === 0) {
+        console.log("❌ Nenhuma ordem na memória!");
+        return;
+      }
+      
+      // 2. Pegar a primeira ordem
+      const ordemOriginal = this.ordensCompra[0];
+      console.log("📋 Ordem original:", ordemOriginal);
+      
+      // 3. Simular uma atualização direta na API
+      console.log("� Fazendo chamada direta para API...");
+      
+      try {
+        // Buscar dados atuais do backend
+        const ordemDoBackend = await apiManager.getOrdemCompra(ordemOriginal.id);
+        console.log("📥 Dados do backend ANTES:", ordemDoBackend);
+        
+        // Criar uma nova data para teste
+        const novaDataPrev = "2025-12-31";
+        const dadosParaUpdate = {
+          ...ordemDoBackend,
+          dataPrev: novaDataPrev
+        };
+        
+        console.log("📤 Enviando atualização:", dadosParaUpdate);
+        
+        // Fazer atualização
+        const resultado = await apiManager.updateOrdemCompra(ordemOriginal.id, dadosParaUpdate);
+        console.log("✅ Resultado da atualização:", resultado);
+        
+        // Buscar novamente para confirmar
+        const ordemAposUpdate = await apiManager.getOrdemCompra(ordemOriginal.id);
+        console.log("🔍 Dados após update:", ordemAposUpdate);
+        
+        // Recarregar a tabela
+        await this.loadOrdens();
+        
+      } catch (error) {
+        console.error("❌ Erro no teste:", error);
+      }
+    };
+    
+    document.body.appendChild(debugButton);
   }
 
   /**
@@ -799,15 +1073,17 @@ class OrdemCompraManager {
             <tr>
                 <td colspan="9" class="text-center">
                     <div class="empty-state" style="padding: 40px;">
-                        <i data-feather="wifi-off" style="font-size: 48px; opacity: 0.5; color: #dc3545;"></i>
-                        <h3 style="color: #dc3545; margin: 16px 0 8px 0;">Backend Não Conectado</h3>
-                        <p style="margin-bottom: 20px;">Para visualizar e gerenciar as ordens de compra:</p>
-                        <ol style="text-align: left; max-width: 400px; margin: 0 auto 20px auto;">
-                            <li>Abra o terminal no diretório do projeto</li>
-                            <li>Execute: <code style="background: #f8f9fa; padding: 2px 6px; border-radius: 4px;">mvn spring-boot:run</code></li>
-                            <li>Aguarde até ver "Started EstoqueApplication"</li>
-                            <li>Recarregue esta página</li>
-                        </ol>
+                        <i data-feather="server" style="font-size: 48px; opacity: 0.6; color: #6c757d;"></i>
+                        <h3 style="color: #495057; margin: 16px 0 8px 0;">Sistema Temporariamente Indisponível</h3>
+                        <p style="margin-bottom: 20px; color: #6c757d;">Não foi possível carregar as ordens de compra no momento.</p>
+                        <div style="margin-bottom: 20px;">
+                            <p style="color: #6c757d; font-size: 14px;">Isso pode acontecer por alguns motivos:</p>
+                            <ul style="text-align: left; max-width: 350px; margin: 0 auto; color: #6c757d; font-size: 14px;">
+                                <li>Manutenção programada do sistema</li>
+                                <li>Conexão temporariamente instável</li>
+                                <li>Sobrecarga momentânea do servidor</li>
+                            </ul>
+                        </div>
                         <button class="btn btn-primary" onclick="window.location.reload()">
                             <i data-feather="refresh-cw"></i>
                             Tentar Novamente
@@ -908,8 +1184,31 @@ class OrdemCompraManager {
     }
 
     try {
+      // Determinar quais ordens exportar
+      let ordensParaExportar = this.ordensCompra;
+      let tipoExportacao = "todas as ordens";
+
+      // Se houver itens selecionados, exportar apenas eles
+      if (
+        this.componentManager &&
+        this.componentManager.selectedItems.size > 0
+      ) {
+        const selectedIds = Array.from(this.componentManager.selectedItems);
+        ordensParaExportar = this.ordensCompra.filter((ordem) =>
+          selectedIds.includes(ordem.id)
+        );
+        tipoExportacao = `${ordensParaExportar.length} ordem${
+          ordensParaExportar.length !== 1 ? "ns" : ""
+        } selecionada${ordensParaExportar.length !== 1 ? "s" : ""}`;
+      }
+
+      if (ordensParaExportar.length === 0) {
+        notify.warning("Nenhuma ordem selecionada para exportar");
+        return;
+      }
+
       // Preparar dados para exportação
-      const exportData = this.ordensCompra.map((ordem) => ({
+      const exportData = ordensParaExportar.map((ordem) => ({
         ID: ordem.id,
         Status: ordem.statusOrdemCompra,
         "Valor (R$)": `R$ ${parseFloat(ordem.valor).toLocaleString("pt-BR", {
@@ -959,10 +1258,11 @@ class OrdemCompraManager {
       // Adicionar worksheet ao workbook
       XLSX.utils.book_append_sheet(workbook, worksheet, "Ordens de Compra");
 
-      // Adicionar estatísticas em uma segunda planilha
-      const stats = this.getStatistics();
+      // Adicionar estatísticas em uma segunda planilha baseadas nos dados exportados
+      const stats = this.calculateStatistics(ordensParaExportar);
       const statsData = [
-        { Métrica: "Total de Ordens", Valor: stats.total },
+        { Métrica: "Tipo de Exportação", Valor: tipoExportacao },
+        { Métrica: "Total de Ordens Exportadas", Valor: stats.total },
         {
           Métrica: "Valor Total",
           Valor: `R$ ${stats.valorTotal.toLocaleString("pt-BR", {
@@ -980,18 +1280,22 @@ class OrdemCompraManager {
       ];
 
       const statsWorksheet = XLSX.utils.json_to_sheet(statsData);
-      statsWorksheet["!cols"] = [{ wch: 20 }, { wch: 25 }];
+      statsWorksheet["!cols"] = [{ wch: 25 }, { wch: 30 }];
       XLSX.utils.book_append_sheet(workbook, statsWorksheet, "Estatísticas");
 
-      // Gerar nome do arquivo
-      const fileName = `ordens_compra_${
+      // Gerar nome do arquivo baseado no tipo de exportação
+      const baseFileName =
+        this.componentManager?.selectedItems.size > 0
+          ? `ordens_selecionadas_${this.componentManager.selectedItems.size}_itens`
+          : `ordens_completas`;
+      const fileName = `${baseFileName}_${
         new Date().toISOString().split("T")[0]
       }.xlsx`;
 
       // Baixar arquivo
       XLSX.writeFile(workbook, fileName);
 
-      notify.success("Planilha Excel gerada com sucesso!");
+      notify.success(`Planilha Excel gerada com sucesso! (${tipoExportacao})`);
     } catch (error) {
       console.error("Erro ao exportar Excel:", error);
       notify.error("Erro ao gerar planilha Excel");
@@ -1002,8 +1306,17 @@ class OrdemCompraManager {
    * Calcula estatísticas das ordens
    */
   getStatistics() {
+    return this.calculateStatistics(this.ordensCompra);
+  }
+
+  /**
+   * Calcula estatísticas de um array específico de ordens
+   * @param {Array} ordens - Array de ordens para calcular estatísticas
+   * @returns {Object} Estatísticas calculadas
+   */
+  calculateStatistics(ordens) {
     const stats = {
-      total: this.ordensCompra.length,
+      total: ordens.length,
       valorTotal: 0,
       concluidas: 0,
       pendentes: 0,
@@ -1011,7 +1324,7 @@ class OrdemCompraManager {
       canceladas: 0,
     };
 
-    this.ordensCompra.forEach((ordem) => {
+    ordens.forEach((ordem) => {
       stats.valorTotal += parseFloat(ordem.valor) || 0;
 
       switch (ordem.statusOrdemCompra) {
@@ -1070,15 +1383,13 @@ class OrdemCompraManager {
 
 // Inicializar quando o DOM estiver pronto
 document.addEventListener("DOMContentLoaded", () => {
-  // Aguardar um pouco para garantir que todos os scripts foram carregados
-  setTimeout(() => {
-    window.ordemCompraManager = new OrdemCompraManager();
+  // Inicializa imediatamente para garantir listeners ativos
+  window.ordemCompraManager = new OrdemCompraManager();
 
-    // Iniciar atualizações periódicas após 1 minuto
-    setTimeout(() => {
-      ordemCompraManager.startPeriodicUpdate();
-    }, 60000);
-  }, 100);
+  // Iniciar atualizações periódicas após 1 minuto
+  setTimeout(() => {
+    ordemCompraManager.startPeriodicUpdate();
+  }, 60000);
 });
 
 // Exportar para uso em outros módulos

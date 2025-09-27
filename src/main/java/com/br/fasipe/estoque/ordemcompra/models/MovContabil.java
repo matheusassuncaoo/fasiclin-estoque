@@ -111,8 +111,6 @@ public class MovContabil {
     @Column(name = "VALCDTO", nullable = false, precision = 10, scale = 2)
     private BigDecimal valCdto;
 
-
-
     // Métodos utilitários
 
     /**
@@ -135,6 +133,5 @@ public class MovContabil {
     public boolean isBalanceada() {
         return calcularSaldo().compareTo(BigDecimal.ZERO) == 0;
     }
-
 
 }
