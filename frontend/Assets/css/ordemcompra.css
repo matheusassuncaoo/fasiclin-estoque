@@ -1085,6 +1085,25 @@
   background-color: #c82333;
 }
 
+/* Botão Exportar Excel - Verde claro com texto branco */
+.btn-success {
+  background-color: #90EE90; /* Verde claro */
+  color: #FFFFFF; /* Texto branco */
+  border: 1px solid #7ED321;
+}
+
+.btn-success:hover {
+  background-color: #7ED321;
+  color: #FFFFFF;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(126, 211, 33, 0.3);
+}
+
+.btn-success:active {
+  background-color: #6BB318;
+  transform: translateY(0);
+}
+
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -1281,16 +1300,15 @@
 }
 
 .action-items {
-  background: rgba(40, 167, 69, 0.6);
-  border: 1px solid rgba(40, 167, 69, 0.8);
+  background: rgba(255, 193, 7, 0.5);
+  border: 1px solid rgba(255, 193, 7, 0.7);
   color: #ffffff;
 }
 
 .action-items:hover {
-  background: rgba(40, 167, 69, 0.9);
-  border: 1px solid rgba(40, 167, 69, 1);
+  background: rgba(255, 193, 7, 0.8);
+  border: 1px solid rgba(255, 193, 7, 0.9);
   color: #ffffff;
-  transform: translateY(-2px) scale(1.08);
 }
 
 /* Icon size adjustment */
@@ -1369,7 +1387,7 @@
   font-weight: 500;
 }
 
-/* MODAL */
+/* MODAL PADRONIZADO */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -1382,10 +1400,13 @@
   justify-content: center;
   z-index: 1000;
   backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: all 0.3s ease;
 }
 
 .modal-overlay.active {
   display: flex;
+  opacity: 1;
 }
 
 .modal {
@@ -1395,8 +1416,29 @@
   width: 90%;
   max-width: 600px;
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden;
   animation: modalSlideIn 0.3s ease-out;
+  transform: scale(0.9);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-overlay.active .modal {
+  transform: scale(1);
+}
+
+/* Modal grande para formulários complexos */
+.modal-large {
+  max-width: 1200px;
+  width: 95%;
+  max-height: 95vh;
+}
+
+/* Modal de informações específico */
+.modal-info {
+  max-width: 900px;
+  width: 95%;
 }
 
 @keyframes modalSlideIn {
@@ -1416,13 +1458,17 @@
   align-items: center;
   padding: 20px 24px;
   border-bottom: 1px solid #e9ecef;
-  background-color: #f8f9fa;
+  background: linear-gradient(135deg, var(--azul) 0%, #2a5189 100%);
+  color: var(--branco);
   border-radius: 12px 12px 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .modal-header h2 {
   margin: 0;
-  color: var(--azul);
+  color: var(--branco);
   font-weight: 600;
   font-size: 18px;
   display: flex;
@@ -1436,10 +1482,10 @@
 }
 
 .modal-close {
-  background: none;
-  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   cursor: pointer;
-  color: #6c757d;
+  color: var(--branco);
   padding: 8px;
   border-radius: 6px;
   transition: all 0.3s ease;
@@ -1451,8 +1497,9 @@
 }
 
 .modal-close:hover {
-  background-color: #e9ecef;
-  color: var(--preto);
+  background: rgba(255, 255, 255, 0.3);
+  color: var(--branco);
+  transform: scale(1.05);
 }
 
 .modal-close i {
@@ -1460,8 +1507,16 @@
   height: 18px;
 }
 
-.modal-form {
+.modal-body {
   padding: 24px;
+  max-height: calc(90vh - 140px);
+  overflow-y: auto;
+  background-color: var(--branco);
+  flex: 1 1 auto;
+}
+
+.modal-form {
+  padding: 0;
 }
 
 .form-row {
@@ -1511,14 +1566,32 @@
 
 .modal-actions {
   display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  padding: 24px 32px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   margin-top: 0;
-  background: rgba(248, 249, 250, 0.5);
-  backdrop-filter: blur(20px);
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   border-radius: 0 0 12px 12px;
+  flex-wrap: wrap;
+}
+
+.footer-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6c757d;
+  font-size: 13px;
+}
+
+.footer-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.footer-actions .btn {
+  min-width: 120px;
+  padding: 10px 20px;
 }
 
 /* Apple-style Modal Buttons */
@@ -1595,7 +1668,7 @@
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden; /* delegate scrolling to .modal-body */
 }
 
 .modal-view .modal-header {
@@ -1731,6 +1804,82 @@
   }
 }
 
+/* Responsividade dos Modais Padronizados */
+@media (max-width: 768px) {
+  .modal {
+    width: 95%;
+    max-width: none;
+    max-height: 95vh;
+    margin: 10px;
+  }
+  
+  .modal-large {
+    width: 95%;
+    max-width: none;
+    max-height: 95vh;
+  }
+  
+  .modal-info {
+    width: 95%;
+    max-width: none;
+  }
+  
+  .modal-header {
+    padding: 16px 20px;
+  }
+  
+  .modal-header h2 {
+    font-size: 16px;
+  }
+  
+  .modal-body {
+    padding: 20px;
+  }
+  
+  .modal-actions {
+    padding: 16px 20px;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .footer-info {
+    display: none;
+  }
+  
+  .footer-actions {
+    width: 100%;
+  }
+  
+  .footer-actions .btn {
+    flex: 1;
+    min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    margin: 0;
+  }
+  
+  .modal-large {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+  }
+  
+  .modal-info {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+  }
+}
+
 .info-item {
   display: flex;
   flex-direction: column;
@@ -1809,10 +1958,67 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
 
+/* Container de itens no modal de visualização */
+.items-container-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.items-table-wrapper {
+  border-radius: 12px;
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+/* Estilos específicos para itens no modal de visualização */
+.product-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.product-name {
+  font-weight: 600;
+  color: #1d1d1f;
+  font-size: 14px;
+}
+
+.product-details {
+  font-size: 12px;
+  color: #86868b;
+  line-height: 1.4;
+}
+
+.quantity-badge {
+  background: rgba(0, 122, 255, 0.1);
+  color: #007aff;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.price-value {
+  font-weight: 600;
+  color: #30d158;
+  font-size: 14px;
+}
+
+.total-value {
+  font-weight: 700;
+  color: #1d1d1f;
+  font-size: 14px;
+}
+
 .mini-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  min-width: 520px; /* allow horizontal scroll on narrow screens */
 }
 
 .mini-table thead {
