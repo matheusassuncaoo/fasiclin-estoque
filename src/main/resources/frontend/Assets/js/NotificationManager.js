@@ -554,3 +554,5 @@ const notify = {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = NotificationManager;
 }
+
+console.log("[NotificationManager] Inicializado com sucesso");

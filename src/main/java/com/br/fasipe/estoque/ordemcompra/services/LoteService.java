@@ -583,23 +583,16 @@ public class LoteService {
         if (idOrdemCompra == null) {
             throw new IllegalArgumentException("ID da ordem de compra não pode ser nulo");
         }
-
-        System.out.println("[LoteService] DEBUG: Iniciando deleteAllByOrdemId para ordem: " + idOrdemCompra);
         
         List<Lote> lotes = findByIdOrdemCompra(idOrdemCompra);
-        System.out.println("[LoteService] DEBUG: Encontrados " + lotes.size() + " lotes para a ordem " + idOrdemCompra);
         
         if (lotes.isEmpty()) {
-            System.out.println("[LoteService] DEBUG: Nenhum lote encontrado, saindo");
             return; // nada a fazer
         }
 
         for (Lote lote : lotes) {
-            System.out.println("[LoteService] DEBUG: Processando lote ID: " + lote.getIdLote() + ", quantidade: " + lote.getQntd());
-            
             // Regra de negócio: não permitir excluir lotes com quantidade > 0
             if (lote.getQntd() != null && lote.getQntd() > 0) {
-                System.out.println("[LoteService] ERRO: Lote " + lote.getIdLote() + " possui quantidade > 0");
                 throw new IllegalStateException(
                         "Não é possível remover a ordem: lote #" + lote.getIdLote() +
                                 " possui quantidade disponível (" + lote.getQntd() + ")");
@@ -607,34 +600,24 @@ public class LoteService {
 
             // Verificar e remover estoques vinculados ao lote
             try {
-                System.out.println("[LoteService] DEBUG: Buscando estoques para lote: " + lote.getIdLote());
                 List<com.br.fasipe.estoque.ordemcompra.models.Estoque> estoques = estoqueService
                         .findByIdLote(lote.getIdLote());
-                System.out.println("[LoteService] DEBUG: Encontrados " + estoques.size() + " estoques para lote " + lote.getIdLote());
                 
                 for (com.br.fasipe.estoque.ordemcompra.models.Estoque est : estoques) {
-                    System.out.println("[LoteService] DEBUG: Processando estoque ID: " + est.getId() + ", quantidade: " + est.getQtdEstoque());
-                    
                     // Bloquear se houver quantidade em estoque
                     if (est.getQtdEstoque() != null && est.getQtdEstoque() > 0) {
-                        System.out.println("[LoteService] ERRO: Estoque " + est.getId() + " possui quantidade > 0");
                         throw new IllegalStateException(
                                 "Não é possível remover a ordem: estoque do lote #" + lote.getIdLote()
                                         + " possui quantidade (" + est.getQtdEstoque() + ")");
                     }
                     // Se quantidade for zero, remover o registro de estoque
-                    System.out.println("[LoteService] DEBUG: Removendo estoque ID: " + est.getId());
                     estoqueService.deleteById(est.getId());
                 }
 
                 // Após remover estoques vinculados, remover o lote
-                System.out.println("[LoteService] DEBUG: Removendo lote ID: " + lote.getIdLote());
                 deleteById(lote.getIdLote());
-                System.out.println("[LoteService] DEBUG: Lote " + lote.getIdLote() + " removido com sucesso");
                 
             } catch (Exception e) {
-                System.out.println("[LoteService] ERRO ao processar lote " + lote.getIdLote() + ": " + e.getClass().getName() + " - " + e.getMessage());
-                e.printStackTrace();
                 throw e;
             }
         }

@@ -471,6 +471,8 @@ class OrdemCompraComponentsManager {
    * @param {Array} ordensCompra - Array com ordens de compra
    */
   renderTable(ordensCompra) {
+    console.log("🏪 [renderTable] INÍCIO - ordens recebidas:", ordensCompra?.length || 0);
+    
     if (!this.elements.tableBody) {
       console.error("[ComponentsManager] Elemento tableBody não encontrado");
       return;
@@ -492,7 +494,14 @@ class OrdemCompraComponentsManager {
     const endIdx = startIdx + this.itemsPerPage;
     const pageItems = ordensCompra.slice(startIdx, endIdx);
 
-    pageItems.forEach((ordem) => {
+    console.log(`🏪 [renderTable] Renderizando página ${this.currentPage}, itens ${startIdx}-${endIdx}:`);
+    pageItems.forEach((ordem, index) => {
+      console.log(`🏪 [renderTable] Item ${index + 1}:`, {
+        id: ordem.id,
+        dataPrev: ordem.dataPrev,
+        dataOrdem: ordem.dataOrdem,
+        dataEntre: ordem.dataEntre
+      });
       const row = this.createTableRow(ordem);
       tbody.appendChild(row);
     });
@@ -528,6 +537,18 @@ class OrdemCompraComponentsManager {
     // Formatar valores
     const dataPrevFormatada = this.formatDate(ordem.dataPrev);
     const dataOrdemFormatada = this.formatDate(ordem.dataOrdem);
+    
+    // Debug para conferir datas renderizadas
+    console.log(`🎨 [createTableRow] ID ${ordem.id}:`, {
+      raw: {
+        dataPrev: ordem.dataPrev,
+        dataOrdem: ordem.dataOrdem,
+      },
+      formatted: {
+        dataPrev: dataPrevFormatada,
+        dataOrdem: dataOrdemFormatada,
+      },
+    });
 
     tr.innerHTML = `
             <td class="checkbox-column">
@@ -810,6 +831,15 @@ class OrdemCompraComponentsManager {
   populateForm(data) {
     if (!data) return;
 
+    console.log("[DEBUG] populateForm - dados recebidos:", data);
+    console.log("[DEBUG] populateForm - elementos encontrados:", {
+      inputId: !!this.elements.inputId,
+      inputStatusOrdemCompra: !!this.elements.inputStatusOrdemCompra,
+      inputDataPrev: !!this.elements.inputDataPrev,
+      inputDataOrdem: !!this.elements.inputDataOrdem,
+      inputObservacoes: !!this.elements.inputObservacoes
+    });
+
     // Helper para normalizar datas para o formato aceito pelo input[type=date]
     const toInputDate = (value) => {
       if (!value) return "";
@@ -863,12 +893,16 @@ class OrdemCompraComponentsManager {
     }
     if (this.elements.inputDataPrev) {
       const formattedDataPrev = toInputDate(data.dataPrev);
+      console.log("[DEBUG] populateForm - dataPrev original:", data.dataPrev);
+      console.log("[DEBUG] populateForm - dataPrev formatada:", formattedDataPrev);
       this.elements.inputDataPrev.value = formattedDataPrev;
       // Adicionar classe visual para mostrar que foi atualizado
       this.elements.inputDataPrev.classList.add("is-valid");
     }
     if (this.elements.inputDataOrdem) {
       const formattedDataOrdem = toInputDate(data.dataOrdem);
+      console.log("[DEBUG] populateForm - dataOrdem original:", data.dataOrdem);
+      console.log("[DEBUG] populateForm - dataOrdem formatada:", formattedDataOrdem);
       this.elements.inputDataOrdem.value = formattedDataOrdem;
       // Adicionar classe visual para mostrar que foi atualizado
       this.elements.inputDataOrdem.classList.add("is-valid");
@@ -2838,6 +2872,8 @@ class OrdemCompraComponentsManager {
       return "-";
     }
 
+    console.log("📅 [formatDate] INPUT:", dateInput, "TIPO:", typeof dateInput);
+
     // Se é um array (como [2025, 6, 10]), converte para data
     if (Array.isArray(dateInput) && dateInput.length >= 3) {
       const [year, month, day] = dateInput;
@@ -2871,10 +2907,12 @@ class OrdemCompraComponentsManager {
       // Preferir ISO yyyy-mm-dd
       const dateOnly = String(dateString).split("T")[0];
       const partsDash = dateOnly.split("-");
+      console.log("📅 [formatDate] partsDash:", partsDash);
       if (partsDash.length === 3) {
         const [year, month, day] = partsDash;
         if (year && month && day && year.length === 4) {
           const resultado = `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
+          console.log("📅 [formatDate] RESULTADO:", resultado);
           return resultado;
         }
       }
@@ -3948,3 +3986,5 @@ if (typeof window !== "undefined" && !window.componentsManager) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = OrdemCompraComponentsManager;
 }
+
+console.log("[OrdemCompraComponentsManager] Inicializado com sucesso");

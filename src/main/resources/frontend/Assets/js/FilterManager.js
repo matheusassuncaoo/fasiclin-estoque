@@ -119,6 +119,7 @@ class FilterManager {
     try {
       // Verificar se ApiManager está disponível
       if (!window.apiManager) {
+        console.error("[FilterManager] ApiManager não está disponível");
         return;
       }
 
@@ -131,6 +132,8 @@ class FilterManager {
         dataFim: document.getElementById("filterDataFim")?.value || "",
       };
 
+      console.log("[FilterManager] Aplicando filtros:", this.currentFilters);
+
       // Valida os filtros
       if (!this.validateFilters()) {
         return;
@@ -138,8 +141,10 @@ class FilterManager {
 
       // Aplica os filtros via API
       await this.loadFilteredData();
+
+      console.log("Filtros aplicados com sucesso!");
     } catch (error) {
-      // Silent error handling
+      console.error("[FilterManager] Erro ao aplicar filtros:", error);
     }
   }
 
@@ -151,11 +156,13 @@ class FilterManager {
 
     // Validação de valores
     if (valorMin && valorMax && parseFloat(valorMin) > parseFloat(valorMax)) {
+      console.error("Valor mínimo não pode ser maior que o valor máximo");
       return false;
     }
 
     // Validação de datas
     if (dataInicio && dataFim && new Date(dataInicio) > new Date(dataFim)) {
+      console.error("❌ Data de início não pode ser posterior à data fim");
       return false;
     }
 
@@ -174,6 +181,7 @@ class FilterManager {
     try {
       // Verificar se o ApiManager está disponível
       if (!window.apiManager) {
+        console.error("[FilterManager] ApiManager não disponível");
         return;
       }
 
@@ -246,6 +254,7 @@ class FilterManager {
         ordensCompra.length
       );
     } catch (error) {
+      console.error("[FilterManager] Erro ao carregar dados filtrados:", error);
       throw error;
     }
   }
@@ -328,6 +337,8 @@ class FilterManager {
       this.currentSort.direction = "asc";
     }
 
+    console.log("[FilterManager] Ordenando por:", this.currentSort);
+
     // Atualiza os ícones de ordenação
     this.updateSortIcons();
 
@@ -404,6 +415,7 @@ class FilterManager {
 
       notify.success("Filtros removidos com sucesso!");
     } catch (error) {
+      console.error("[FilterManager] Erro ao limpar filtros:", error);
       notify.error("Erro ao limpar filtros. Tente novamente.");
     }
   }

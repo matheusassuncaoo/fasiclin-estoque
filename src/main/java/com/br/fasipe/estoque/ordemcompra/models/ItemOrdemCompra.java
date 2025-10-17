@@ -8,9 +8,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -81,11 +80,8 @@ public class ItemOrdemCompra {
 
     /**
      * Valor unitário do produto.
-     * Campo obrigatório com precisão de 10 dígitos e 2 casas decimais.
+     * Campo opcional - valores serão definidos pelo almoxarifado posteriormente.
      */
-    @NotNull(message = "Valor é obrigatório")
-    @DecimalMin(value = "0.01", message = "Valor deve ser maior que zero")
-    @Digits(integer = 8, fraction = 2, message = "Valor deve ter no máximo 8 dígitos inteiros e 2 decimais")
     @Column(name = "VALOR", nullable = false, precision = 10, scale = 2)
     private BigDecimal valor;
 
@@ -100,6 +96,19 @@ public class ItemOrdemCompra {
 
     // Campo vlrTotal removido - não existe no banco
     // Valor total será calculado dinamicamente quando necessário
+
+    // Métodos de ciclo de vida
+
+    /**
+     * Define valores padrão antes da persistência.
+     * Valor padrão será definido como 0, pois valores são declarados posteriormente pelo almoxarifado.
+     */
+    @PrePersist
+    public void prePersist() {
+        if (this.valor == null) {
+            this.valor = BigDecimal.ZERO;
+        }
+    }
 
     // Métodos utilitários
 

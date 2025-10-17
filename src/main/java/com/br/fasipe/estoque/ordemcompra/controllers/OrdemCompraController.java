@@ -141,24 +141,9 @@ public class OrdemCompraController {
             @Parameter(description = "ID da ordem de compra", required = true) @PathVariable @NotNull @Min(1) Integer id,
             @Parameter(description = "Novos dados da ordem de compra", required = true) @Valid @RequestBody OrdemCompra ordemCompra) {
         try {
-            System.out.println("🎯 [OrdemCompraController] PUT /{id} - DADOS RECEBIDOS:");
-            System.out.println("🆔 Path ID: " + id);
-            System.out.println("🆔 Body ID: " + ordemCompra.getId());
-            System.out.println("🏷️ Status: " + ordemCompra.getStatusOrdemCompra());
-            System.out.println("💰 Valor: " + ordemCompra.getValor());
-            System.out.println("📅 Data Prevista: " + ordemCompra.getDataPrev());
-            System.out.println("📅 Data Ordem: " + ordemCompra.getDataOrdem());
-            System.out.println("📅 Data Entrega: " + ordemCompra.getDataEntre());
-            
+            // Garante que o ID do path seja usado
             ordemCompra.setId(id);
             OrdemCompra ordemAtualizada = ordemCompraService.update(ordemCompra);
-            
-            System.out.println("🚀 [OrdemCompraController] RESPOSTA ENVIADA:");
-            System.out.println("🆔 ID: " + ordemAtualizada.getId());
-            System.out.println("📅 Data Prevista: " + ordemAtualizada.getDataPrev());
-            System.out.println("📅 Data Ordem: " + ordemAtualizada.getDataOrdem());
-            System.out.println("📅 Data Entrega: " + ordemAtualizada.getDataEntre());
-            
             return ResponseEntity.ok(ordemAtualizada);
         } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage(), e);
@@ -465,12 +450,6 @@ public class OrdemCompraController {
                                     "message", posicao + ": Quantidade é obrigatória"));
                 }
 
-                if (!itemMap.containsKey("precoUnitario") || itemMap.get("precoUnitario") == null) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                            .body(Map.of("error", "Preço obrigatório",
-                                    "message", posicao + ": Preço unitário é obrigatório"));
-                }
-
                 try {
                     int quantidade = Integer.valueOf(itemMap.get("quantidade").toString());
                     if (quantidade <= 0) {
@@ -483,19 +462,6 @@ public class OrdemCompraController {
                             .body(Map.of("error", "Quantidade inválida",
                                     "message", posicao + ": Quantidade deve ser um número inteiro"));
                 }
-
-                try {
-                    BigDecimal preco = new BigDecimal(itemMap.get("precoUnitario").toString());
-                    if (preco.compareTo(BigDecimal.ZERO) <= 0) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                                .body(Map.of("error", "Preço inválido",
-                                        "message", posicao + ": Preço deve ser maior que zero"));
-                    }
-                } catch (NumberFormatException e) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                            .body(Map.of("error", "Preço inválido",
-                                    "message", posicao + ": Preço deve ser um número decimal válido"));
-                }
             }
 
             // Converter Map para entidades ItemOrdemCompra
@@ -504,7 +470,12 @@ public class OrdemCompraController {
                 item.setIdOrdComp(Math.toIntExact(id));
                 item.setIdProduto(Integer.valueOf(itemMap.get("produtoId").toString()));
                 item.setQntd(Integer.valueOf(itemMap.get("quantidade").toString()));
-                item.setValor(new BigDecimal(itemMap.get("precoUnitario").toString()));
+                
+                // Preço unitário é opcional - será definido pelo almoxarifado posteriormente
+                // Se não fornecido, será definido como 0 pelo @PrePersist
+                if (itemMap.containsKey("precoUnitario") && itemMap.get("precoUnitario") != null) {
+                    item.setValor(new BigDecimal(itemMap.get("precoUnitario").toString()));
+                }
 
                 // Data de vencimento (usar data padrão por enquanto - pode ser melhorada)
                 if (itemMap.get("dataVencimento") != null) {

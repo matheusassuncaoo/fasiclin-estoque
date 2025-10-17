@@ -1,6 +1,7 @@
 package com.br.fasipe.estoque.ordemcompra.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
@@ -65,6 +66,32 @@ public interface OrdemCompraRepository extends JpaRepository<OrdemCompra, Intege
             @QueryHint(name = "jakarta.persistence.query.timeout", value = "2000")
     })
     Optional<OrdemCompra> findByIdOrdemCompra(@Param("id") Integer id);
+
+    /**
+     * Atualiza as datas de uma ordem de compra.
+     * 
+     * <p>
+     * <strong>Solução de workaround:</strong> Query explícita para forçar UPDATE
+     * quando dirty checking falha.
+     * </p>
+     * 
+     * @param id        ID da ordem de compra
+     * @param dataPrev  Nova data de previsão
+     * @param dataOrdem Nova data da ordem
+     * @param dataEntre Nova data de entrega
+     * @param status    Novo status
+     * @return Número de registros atualizados (deve ser 1)
+     */
+    @Modifying
+    @Query("UPDATE OrdemCompra o SET o.dataPrev = :dataPrev, o.dataOrdem = :dataOrdem, " +
+           "o.dataEntre = :dataEntre, o.statusOrdemCompra = :status WHERE o.id = :id")
+    int updateOrdemCompraDatas(
+        @Param("id") Integer id,
+        @Param("dataPrev") LocalDate dataPrev,
+        @Param("dataOrdem") LocalDate dataOrdem,
+        @Param("dataEntre") LocalDate dataEntre,
+        @Param("status") StatusOrdemCompra status
+    );
 
     /**
      * Busca ordens de compra por status.

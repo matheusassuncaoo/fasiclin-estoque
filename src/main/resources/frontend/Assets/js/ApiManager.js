@@ -43,7 +43,6 @@ class ApiManager {
         ...this.defaultHeaders,
         ...options.headers,
       },
-      cache: 'no-store', // Desabilita cache HTTP
       ...options,
     };
 
@@ -60,6 +59,10 @@ class ApiManager {
     // Implementação de retry
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
+        console.log(
+          `[ApiManager] ${config.method} ${url} (Tentativa ${attempt})`
+        );
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
@@ -100,13 +103,20 @@ class ApiManager {
           data = await response.text();
         }
 
+        console.log(`[ApiManager] Sucesso: ${config.method} ${url}`, data);
+        
+
+        
         return data;
       } catch (error) {
         lastError = error;
+        console.error(`[ApiManager] Erro na tentativa ${attempt}:`, error);
 
         // Se não é a última tentativa e é um erro de rede, aguardar antes de tentar novamente
         if (attempt < this.maxRetries && this.isRetryableError(error)) {
-          await new Promise((resolve) => setTimeout(resolve, this.retryDelay));
+          console.log(
+            `[ApiManager] Aguardando ${this.retryDelay}ms antes da próxima tentativa...`
+          );
           await this.delay(this.retryDelay * attempt); // Backoff exponencial
         } else {
           break;
@@ -115,6 +125,9 @@ class ApiManager {
     }
 
     // Se chegou aqui, todas as tentativas falharam
+    console.error(
+      `[ApiManager] Todas as tentativas falharam para ${config.method} ${url}`
+    );
     throw this.createApiError(lastError, endpoint, config.method);
   }
 
@@ -170,8 +183,6 @@ class ApiManager {
    * @returns {Promise<Array>} - Lista de ordens de compra
    */
   async getOrdensCompra(params = {}) {
-    // Adiciona timestamp para evitar cache do navegador
-    params._t = Date.now();
     const queryString = new URLSearchParams(params).toString();
     const endpoint = `/ordens-compra${queryString ? `?${queryString}` : ""}`;
     return await this.makeRequest(endpoint, { method: "GET" });
@@ -195,8 +206,9 @@ class ApiManager {
    * @returns {Promise<Object>} - Ordem de compra criada
    */
   async createOrdemCompra(ordemCompra) {
-    this.validateOrdemCompra(ordemCompra, true);
     const payload = this.sanitizeOrdemCompraPayload(ordemCompra, true);
+    console.log("🚀 [createOrdemCompra] Payload que será enviado:", payload);
+    this.validateOrdemCompra(payload);
     return await this.makeRequest("/ordens-compra", {
       method: "POST",
       body: payload,
@@ -391,15 +403,23 @@ class ApiManager {
    * - Normaliza datas para YYYY-MM-DD
    */
   sanitizeOrdemCompraPayload(data, isCreate = true) {
+    console.log("📦 [sanitizeOrdemCompraPayload] Dados recebidos:", data);
+    console.log("📦 [sanitizeOrdemCompraPayload] isCreate:", isCreate);
+    
     const onlyDate = (v) => {
+      console.log("🔍 [onlyDate] Processando:", v, "tipo:", typeof v);
       if (!v) {
+        console.log("⚠️ [onlyDate] Valor vazio, retornando null");
         return null;
       }
       if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+        console.log("✅ [onlyDate] Já está em formato YYYY-MM-DD:", v);
         return v;
       }
       const d = new Date(v);
-      return isNaN(d.getTime()) ? null : d.toISOString().split("T")[0];
+      const resultado = isNaN(d.getTime()) ? null : d.toISOString().split("T")[0];
+      console.log("🔄 [onlyDate] Convertido para:", resultado);
+      return resultado;
     };
 
     const statusMap = { ANDA: "PROC" }; // mapear valores legacy
@@ -411,6 +431,8 @@ class ApiManager {
       dataPrev: onlyDate(data.dataPrev),
       dataOrdem: onlyDate(data.dataOrdem),
     };
+    
+    console.log("📋 [sanitizeOrdemCompraPayload] Payload ANTES de filtrar:", payload);
     
     // Adicionar ID apenas se for edição
     if (!isCreate && data.id) {
@@ -425,10 +447,12 @@ class ApiManager {
     // Remover apenas undefined E null (campos vazios não devem ser enviados)
     Object.keys(payload).forEach((k) => {
       if (payload[k] === undefined || payload[k] === null) {
+        console.log(`⚠️ Removendo campo ${k} (valor: ${payload[k]})`);
         delete payload[k];
       }
     });
 
+    console.log("✅ [sanitizeOrdemCompraPayload] Payload sanitizado FINAL:", payload);
     return payload;
   }
 
@@ -454,18 +478,18 @@ class ApiManager {
    */
   async testConnection() {
     try {
-      const response = await fetch(`${this.baseURL}/ordens-compra`, {
-        method: "GET",
-        headers: this.defaultHeaders,
-      });
-
-      if (!response.ok) {
-        return false;
-      }
-
+      // Tentar endpoint de ordens primeiro, depois health
+      await this.makeRequest("/ordens-compra", { method: "GET" });
       return true;
     } catch (error) {
-      return false;
+      try {
+        // Fallback para endpoint de health
+        await this.makeRequest("/health", { method: "GET" });
+        return true;
+      } catch (healthError) {
+        console.error("[ApiManager] Teste de conexão falhou:", error);
+        return false;
+      }
     }
   }
 
@@ -510,6 +534,8 @@ class ApiManager {
    * @returns {Promise<Object>} - Resposta da API
    */
   async adicionarItensOrdem(ordemId, itens) {
+    console.log("[ApiManager] Adicionando itens à ordem:", { ordemId, itens });
+
     if (!ordemId || !itens || !Array.isArray(itens) || itens.length === 0) {
       throw new Error("ID da ordem e itens são obrigatórios");
     }
@@ -532,8 +558,10 @@ class ApiManager {
         }
       );
 
+      console.log("[ApiManager] Itens adicionados com sucesso:", response);
       return response;
     } catch (error) {
+      console.error("[ApiManager] Erro ao adicionar itens:", error);
       throw error;
     }
   }
@@ -544,6 +572,8 @@ class ApiManager {
    * @returns {Promise<Array>} - Lista de itens
    */
   async getItensOrdem(ordemId) {
+    console.log("[ApiManager] Buscando itens da ordem:", ordemId);
+
     if (!ordemId) {
       throw new Error("ID da ordem é obrigatório");
     }
@@ -555,6 +585,8 @@ class ApiManager {
           method: "GET",
         }
       );
+
+      console.log("[ApiManager] Itens encontrados:", response);
 
       // Garantir que sempre retornamos um array
       if (!response) {
@@ -581,8 +613,10 @@ class ApiManager {
       }
 
       // Se chegou aqui, a resposta não é um array, retornar vazio
+      console.warn("[ApiManager] Resposta não é um array válido:", response);
       return [];
     } catch (error) {
+      console.error("[ApiManager] Erro ao buscar itens:", error);
       return []; // Retornar array vazio em caso de erro ao invés de throw
     }
   }
@@ -604,6 +638,12 @@ class ApiManager {
    * @returns {Promise<Object>} - Item atualizado
    */
   async atualizarItemOrdem(ordemId, itemId, dadosItem) {
+    console.log("[ApiManager] Atualizando item:", {
+      ordemId,
+      itemId,
+      dadosItem,
+    });
+
     if (!ordemId || !itemId || !dadosItem) {
       throw new Error("ID da ordem, ID do item e dados são obrigatórios");
     }
@@ -617,8 +657,10 @@ class ApiManager {
         }
       );
 
+      console.log("[ApiManager] Item atualizado:", response);
       return response;
     } catch (error) {
+      console.error("[ApiManager] Erro ao atualizar item:", error);
       throw error;
     }
   }
@@ -630,6 +672,8 @@ class ApiManager {
    * @returns {Promise<Object>} - Resposta da API
    */
   async removerItemOrdem(ordemId, itemId) {
+    console.log("[ApiManager] Removendo item:", { ordemId, itemId });
+
     if (!ordemId || !itemId) {
       throw new Error("ID da ordem e ID do item são obrigatórios");
     }
@@ -642,8 +686,10 @@ class ApiManager {
         }
       );
 
+      console.log("[ApiManager] Item removido:", response);
       return response;
     } catch (error) {
+      console.error("[ApiManager] Erro ao remover item:", error);
       throw error;
     }
   }
@@ -655,16 +701,24 @@ class ApiManager {
    * @returns {Promise<Object>} - Ordem criada com itens
    */
   async criarOrdemComItens(dadosOrdem, itens = []) {
+    console.log("[ApiManager] Criando ordem completa com itens:", {
+      dadosOrdem,
+      itens,
+    });
+
     try {
       // 1. Primeiro criar a ordem de compra
       const ordemCriada = await this.createOrdemCompra(dadosOrdem);
+      console.log("[ApiManager] Ordem criada:", ordemCriada);
 
       // 2. Se há itens, adicioná-los à ordem criada
       if (itens && itens.length > 0) {
+        console.log("[ApiManager] Adicionando itens à ordem:", itens);
         const itensAdicionados = await this.adicionarItensOrdem(
           ordemCriada.id,
           itens
         );
+        console.log("[ApiManager] Itens adicionados:", itensAdicionados);
 
         // 3. Buscar a ordem atualizada com valores recalculados
         const ordemAtualizada = await this.getOrdemCompra(ordemCriada.id);
@@ -673,6 +727,7 @@ class ApiManager {
 
       return ordemCriada;
     } catch (error) {
+      console.error("[ApiManager] Erro ao criar ordem com itens:", error);
       throw error;
     }
   }
@@ -690,8 +745,13 @@ class ApiManager {
       if (response.data && Array.isArray(response.data)) return response.data;
       if (response.content && Array.isArray(response.content))
         return response.content;
+      console.warn(
+        "[ApiManager] Resposta de produtos não é um array:",
+        response
+      );
       return [];
     } catch (error) {
+      console.error("[ApiManager] Erro ao buscar produtos:", error);
       return [];
     }
   }
@@ -717,6 +777,10 @@ class ApiManager {
       // Fallback: retorna todos e o cliente filtra
       return await this.getProdutos();
     } catch (error) {
+      console.error(
+        "[ApiManager] Erro ao buscar produtos para reposição:",
+        error
+      );
       return [];
     }
   }
@@ -735,3 +799,5 @@ window.apiManager = apiManager;
 if (typeof module !== "undefined" && module.exports) {
   module.exports = ApiManager;
 }
+
+console.log("[ApiManager] Inicializado com sucesso");

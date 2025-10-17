@@ -12,7 +12,9 @@ import com.br.fasipe.estoque.ordemcompra.models.OrdemCompra;
 import com.br.fasipe.estoque.ordemcompra.models.OrdemCompra.StatusOrdemCompra;
 import com.br.fasipe.estoque.ordemcompra.repository.OrdemCompraRepository;
 
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -47,6 +49,9 @@ public class OrdemCompraService {
 
     @Autowired
     private OrdemCompraRepository ordemCompraRepository;
+    
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Autowired
     private ItemOrdemCompraService itemOrdemCompraService;
@@ -152,34 +157,48 @@ public class OrdemCompraService {
             throw new IllegalArgumentException("ID é obrigatório para atualização");
         }
 
-        // Verifica se a ordem existe
+        // Verifica se a ordem existe e carrega a entidade gerenciada
         OrdemCompra existingOrdem = findById(obj.getId());
-
-        // LOG DETALHADO PARA DEBUG
-        System.out.println("🔍 [OrdemCompraService] DADOS RECEBIDOS PARA UPDATE:");
-        System.out.println("🆔 ID: " + obj.getId());
-        System.out.println("🏷️ Status: " + obj.getStatusOrdemCompra());
-        System.out.println("💰 Valor: " + obj.getValor());
-        System.out.println("📅 Data Prevista: " + obj.getDataPrev());
-        System.out.println("📅 Data Ordem: " + obj.getDataOrdem());
-        System.out.println("📅 Data Entrega: " + obj.getDataEntre());
 
         // Validações de negócio para atualização
         validateUpdateRules(obj, existingOrdem);
+        
+        // Atualizar os campos da entidade GERENCIADA
+        existingOrdem.setStatusOrdemCompra(obj.getStatusOrdemCompra());
+        existingOrdem.setDataPrev(obj.getDataPrev());
+        existingOrdem.setDataOrdem(obj.getDataOrdem());
+        
+        // Garante que campos NOT NULL tenham valores
+        if (obj.getValor() != null) {
+            existingOrdem.setValor(obj.getValor());
+        } else if (existingOrdem.getValor() == null) {
+            existingOrdem.setValor(BigDecimal.ZERO);
+        }
+        
+        // Se dataEntre não foi enviada, usar dataPrev
+        if (obj.getDataEntre() != null) {
+            existingOrdem.setDataEntre(obj.getDataEntre());
+        } else {
+            existingOrdem.setDataEntre(obj.getDataPrev());
+        }
 
         try {
-            OrdemCompra resultado = ordemCompraRepository.save(obj);
+            // Workaround: Query UPDATE explícita pois dirty checking não funciona consistentemente
+            ordemCompraRepository.updateOrdemCompraDatas(
+                existingOrdem.getId(),
+                existingOrdem.getDataPrev(),
+                existingOrdem.getDataOrdem(),
+                existingOrdem.getDataEntre(),
+                existingOrdem.getStatusOrdemCompra()
+            );
             
-            // LOG DO RESULTADO APÓS SALVAR
-            System.out.println("✅ [OrdemCompraService] RESULTADO APÓS SALVAR:");
-            System.out.println("🆔 ID: " + resultado.getId());
-            System.out.println("🏷️ Status: " + resultado.getStatusOrdemCompra());
-            System.out.println("💰 Valor: " + resultado.getValor());
-            System.out.println("📅 Data Prevista: " + resultado.getDataPrev());
-            System.out.println("📅 Data Ordem: " + resultado.getDataOrdem());
-            System.out.println("📅 Data Entrega: " + resultado.getDataEntre());
+            // Limpar cache do EntityManager para forçar reload do banco
+            entityManager.clear();
             
-            return resultado;
+            // Recarregar entidade atualizada do banco
+            OrdemCompra updated = findById(obj.getId());
+            
+            return updated;
         } catch (DataIntegrityViolationException e) {
             throw new DataIntegrityViolationException(
                     "Erro de integridade ao atualizar ordem de compra: " + e.getMessage(), e);
@@ -207,7 +226,6 @@ public class OrdemCompraService {
     public void deleteById(@NotNull Integer id) {
         // Este método agora delega para o método de auditoria, que centraliza toda a lógica.
         // A validação de credenciais real acontece no Controller.
-        System.out.println("[OrdemCompraService] Chamada para deleteById(" + id + "). Redirecionando para deleteWithAudit.");
         deleteWithAudit(id, "internal_call", "internal_call");
     }
 
@@ -227,7 +245,6 @@ public class OrdemCompraService {
      */
     @Transactional
     public void deleteWithAudit(@NotNull Integer id, String user, String password) {
-        System.out.println("[OrdemCompraService] Iniciando processo de exclusão para Ordem ID: " + id);
         OrdemCompra ordem = findById(id);
 
         if (ordem.getStatusOrdemCompra() == StatusOrdemCompra.CONC) {
@@ -237,9 +254,7 @@ public class OrdemCompraService {
 
         // Remover movimentações contábeis relacionadas
         try {
-            System.out.println("[OrdemCompraService] DEBUG: Iniciando remoção de movimentações contábeis - Ordem ID: " + id);
             movContabilService.deleteAllByOrdemId(id);
-            System.out.println("[OrdemCompraService] Movimentações contábeis removidas - Ordem ID: " + id);
         } catch (Exception e) {
             System.err.println("[OrdemCompraService] ERRO FATAL ao remover movimentações contábeis da ordem " + id);
             e.printStackTrace();
@@ -248,9 +263,7 @@ public class OrdemCompraService {
 
         // Remover lotes e seus estoques (respeitando regras de negócio)
         try {
-            System.out.println("[OrdemCompraService] DEBUG: Iniciando remoção de lotes - Ordem ID: " + id);
             loteService.deleteAllByOrdemId(id);
-            System.out.println("[OrdemCompraService] Lotes removidos - Ordem ID: " + id);
         } catch (IllegalStateException e) {
             System.err.println("[OrdemCompraService] ERRO de regra de negócio ao remover lotes da ordem " + id);
             e.printStackTrace();
@@ -263,9 +276,7 @@ public class OrdemCompraService {
 
         // Remover itens da ordem de compra
         try {
-            System.out.println("[OrdemCompraService] DEBUG: Iniciando remoção de itens - Ordem ID: " + id);
             itemOrdemCompraService.deleteAllByOrdemId(id);
-            System.out.println("[OrdemCompraService] Itens da ordem removidos com sucesso - Ordem ID: " + id);
         } catch (Exception e) {
             System.err.println("[OrdemCompraService] ERRO FATAL ao remover itens da ordem " + id);
             e.printStackTrace();
@@ -274,9 +285,7 @@ public class OrdemCompraService {
 
         // Finalmente, deletar a ordem de compra
         try {
-            System.out.println("[OrdemCompraService] DEBUG: Iniciando remoção da ordem de compra - Ordem ID: " + id);
             ordemCompraRepository.delete(ordem);
-            System.out.println("[OrdemCompraService] Ordem de compra " + id + " removida com sucesso.");
         } catch (DataIntegrityViolationException e) {
             System.err.println("[OrdemCompraService] ERRO FATAL de violação de integridade ao remover a ordem " + id);
             e.printStackTrace();
@@ -400,11 +409,6 @@ public class OrdemCompraService {
                 throw new IllegalArgumentException(
                         "Data prevista deve ser posterior à data da ordem");
             }
-        }
-
-        // Validação: valor deve ser positivo
-        if (ordem.getValor() != null && ordem.getValor().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Valor deve ser positivo");
         }
     }
 

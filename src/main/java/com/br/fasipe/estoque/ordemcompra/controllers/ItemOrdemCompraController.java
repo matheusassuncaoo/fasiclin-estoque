@@ -356,29 +356,4 @@ public class ItemOrdemCompraController {
             return ResponseEntity.badRequest().build();
         }
     }
-
-    /**
-     * Atualiza valor total de um item.
-     * 
-     * @param item Item a ter o valor total atualizado
-     * @return ResponseEntity com o item atualizado
-     */
-    @PutMapping("/atualizar-valor-total")
-    @Operation(summary = "Atualizar valor total", description = "Recalcula e atualiza o valor total de um item")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Valor total atualizado com sucesso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemOrdemCompra.class))),
-            @ApiResponse(responseCode = "400", description = "Dados inválidos", content = @Content),
-            @ApiResponse(responseCode = "404", description = "Item não encontrado", content = @Content)
-    })
-    public ResponseEntity<ItemOrdemCompra> atualizarValorTotal(
-            @Parameter(description = "Item a ser atualizado", required = true) @Valid @RequestBody ItemOrdemCompra item) {
-        try {
-            ItemOrdemCompra itemAtualizado = itemOrdemCompraService.atualizarValorTotal(item);
-            return ResponseEntity.ok(itemAtualizado);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
 }

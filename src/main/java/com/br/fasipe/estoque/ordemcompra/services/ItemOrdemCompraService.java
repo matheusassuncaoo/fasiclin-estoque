@@ -110,9 +110,6 @@ public class ItemOrdemCompraService {
         // Validações de negócio adicionais
         validateBusinessRules(obj);
 
-        // Calcula o valor total automaticamente
-        obj.inicializarValorTotal();
-
         try {
             return itemOrdemCompraRepository.save(obj);
         } catch (DataIntegrityViolationException e) {
@@ -155,9 +152,6 @@ public class ItemOrdemCompraService {
 
         // Validações de negócio para atualização
         validateUpdateRules(obj, existingItem);
-
-        // Recalcula o valor total automaticamente
-        obj.inicializarValorTotal();
 
         try {
             return itemOrdemCompraRepository.save(obj);
@@ -361,42 +355,6 @@ public class ItemOrdemCompraService {
     }
 
     /**
-     * Calcula o valor total de um item (quantidade * valor unitário).
-     * 
-     * @param item Item de ordem de compra
-     * @return Valor total do item
-     */
-    public BigDecimal calcularValorTotal(@NotNull ItemOrdemCompra item) {
-        if (item == null) {
-            throw new IllegalArgumentException("Item não pode ser nulo");
-        }
-
-        if (item.getQntd() == null || item.getValor() == null) {
-            return BigDecimal.ZERO;
-        }
-
-        return item.getValor().multiply(new BigDecimal(item.getQntd()));
-    }
-
-    /**
-     * Atualiza o valor total de um item baseado na quantidade e valor unitário.
-     * 
-     * @param item Item a ser atualizado
-     * @return Item atualizado
-     */
-    @Transactional
-    public ItemOrdemCompra atualizarValorTotal(@NotNull ItemOrdemCompra item) {
-        if (item == null) {
-            throw new IllegalArgumentException("Item não pode ser nulo");
-        }
-
-        // Calcula e atualiza o valor total usando o método do modelo
-        item.inicializarValorTotal();
-
-        return update(item);
-    }
-
-    /**
      * Valida regras de negócio gerais para criação/atualização.
      * 
      * @param item Item a ser validado
@@ -416,11 +374,6 @@ public class ItemOrdemCompraService {
         // Validação: quantidade deve ser positiva
         if (item.getQntd() != null && item.getQntd() <= 0) {
             throw new IllegalArgumentException("Quantidade deve ser positiva");
-        }
-
-        // Validação: valor unitário deve ser positivo
-        if (item.getValor() != null && item.getValor().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Valor unitário deve ser positivo");
         }
 
         // Validação: data de vencimento não pode ser no passado
@@ -495,8 +448,6 @@ public class ItemOrdemCompraService {
         // Configura o ID da ordem de compra em todos os itens
         itens.forEach(item -> {
             item.setIdOrdComp(idOrdemCompra);
-            // Calcula valor total automaticamente
-            item.inicializarValorTotal();
         });
 
         // Salva todos os itens
@@ -533,7 +484,6 @@ public class ItemOrdemCompraService {
         novosItens.forEach(item -> {
             item.setIdItemOrd(null); // Garante que será criado como novo
             item.setIdOrdComp(idOrdemCompra);
-            item.inicializarValorTotal();
         });
 
         // Salva os novos itens

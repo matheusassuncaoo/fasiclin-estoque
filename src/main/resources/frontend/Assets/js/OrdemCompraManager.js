@@ -37,23 +37,36 @@ class OrdemCompraManager {
         "OrdemCompraComponentsManager não foi carregado após 5 segundos"
       );
     }
+
+    console.log(
+      "[OrdemCompraManager] OrdemCompraComponentsManager carregado com sucesso"
+    );
   }
 
   /**
    * Inicializa o manager
    */
   async init() {
+    console.log("[OrdemCompraManager] Inicializando...");
+
     try {
       // Aguardar o carregamento do OrdemCompraComponentsManager
       if (typeof OrdemCompraComponentsManager === "undefined") {
+        console.log(
+          "[OrdemCompraManager] Aguardando carregamento do OrdemCompraComponentsManager..."
+        );
         await this.waitForComponentsManager();
       }
 
       // Usar o componentsManager global se existir, senão criar um novo
       if (typeof window !== "undefined" && window.componentsManager) {
         this.componentManager = window.componentsManager;
+        console.log("[OrdemCompraManager] Usando componentsManager global");
       } else {
         this.componentManager = new OrdemCompraComponentsManager();
+        console.log(
+          "[OrdemCompraManager] Criando nova instância de componentManager"
+        );
       }
 
       this.setupEventListeners();
@@ -62,7 +75,11 @@ class OrdemCompraManager {
       // Inicializar filter manager após carregar dados
       if (typeof FilterManager !== "undefined") {
         this.filterManager = new FilterManager(this);
+      } else {
+        console.warn("[OrdemCompraManager] FilterManager não disponível");
       }
+
+      console.log("[OrdemCompraManager] Inicializado com sucesso");
     } catch (error) {
       console.error("[OrdemCompraManager] Erro na inicialização:", error);
       notify.error(
@@ -176,6 +193,7 @@ class OrdemCompraManager {
    * Carrega ordens de compra do backend
    */
   async loadOrdens() {
+    console.log("[DEBUG] loadOrdens - Iniciando recarregamento da tabela");
     this.setLoading(true);
 
     try {
@@ -341,6 +359,8 @@ class OrdemCompraManager {
       
       // Destacar a linha atualizada na tabela
       this.highlightUpdatedRow(id);
+      
+      console.log("[DEBUG] updateOrdem - Atualização concluída com sucesso");
     } catch (error) {
       console.error("[OrdemCompraManager] Erro ao atualizar ordem:", error);
 
@@ -520,6 +540,9 @@ class OrdemCompraManager {
    */
   async handleFormSubmit(detail) {
     const { data, isEdit } = detail;
+
+    console.log("[DEBUG] handleFormSubmit - isEdit:", isEdit);
+    console.log("[DEBUG] handleFormSubmit - data:", data);
 
     if (isEdit) {
       await this.updateOrdem(data.id, data);
@@ -738,6 +761,8 @@ class OrdemCompraManager {
     setTimeout(() => {
       const row = document.querySelector(`tr[data-id="${ordemId}"]`);
       if (row) {
+        console.log("[DEBUG] highlightUpdatedRow - Destacando linha da ordem:", ordemId);
+        
         // Adicionar classe de destaque
         row.style.backgroundColor = '#d4edda';
         row.style.transition = 'background-color 0.3s ease';
@@ -746,8 +771,11 @@ class OrdemCompraManager {
         setTimeout(() => {
           if (row) {
             row.style.backgroundColor = '';
+            console.log("[DEBUG] highlightUpdatedRow - Removendo destaque da linha:", ordemId);
           }
         }, 3000);
+      } else {
+        console.warn("[DEBUG] highlightUpdatedRow - Linha não encontrada para ordem:", ordemId);
       }
     }, 100);
   }
@@ -1250,3 +1278,5 @@ document.addEventListener("DOMContentLoaded", () => {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = OrdemCompraManager;
 }
+
+console.log("[OrdemCompraManager] Script carregado");
