@@ -1,5 +1,5 @@
 {
-  "name": "Java 24 Spring & Node",
+  "name": "Java 25 Spring & Node",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
     "ghcr.io/devcontainers/features/java:1": {
