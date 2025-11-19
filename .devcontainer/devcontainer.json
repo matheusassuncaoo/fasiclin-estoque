@@ -1,12 +1,34 @@
 {
-  "image": "mcr.microsoft.com/devcontainers/universal:2",
-
+  "name": "Java 24 Spring & Node",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
     "ghcr.io/devcontainers/features/java:1": {
       "version": "24",
-      "distribution": "ms",
-      "installMaven": true,
-      "mavenVersion": "latest"
+      "installGradle": "false",
+      "installMaven": "true",
+      "jdkDistro": "open"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "latest"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "workbench.colorTheme": "Dracula",
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "files.autoSave": "afterDelay"
+      },
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vmware.vscode-boot-dev-pack",
+        "gabrielbb.vscode-lombok",
+        "ritwickdey.live-server",
+        "streetsidesoftware.code-spell-checker",
+        "dracula-theme.theme-dracula",
+        "redhat.vscode-xml",
+        "redhat.vscode-yaml"
+      ]
     }
   }
 }
