@@ -78,9 +78,9 @@ public class OrdemCompra {
     }
 
     public enum StatusOrdemCompra {
-        PEND,
-        PROC,
-        CONC,
-        CANC
+        PEND,  // Pendente
+        ANDA,  // Andamento
+        CONC,  // Concluído
+        CANC   // Cancelado
     }
 }

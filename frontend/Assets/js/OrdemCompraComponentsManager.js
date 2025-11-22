@@ -2030,6 +2030,23 @@ class OrdemCompraComponentsManager {
           ordem.valor
         );
 
+      // Verificar se a ordem permite adição de itens
+      const statusBloqueado = ordem.statusOrdemCompra === 'CONC' || ordem.statusOrdemCompra === 'CANC';
+      
+      // Desabilitar campos de entrada se ordem estiver concluída ou cancelada
+      if (this.elements.produtoSelect) {
+        this.elements.produtoSelect.disabled = statusBloqueado;
+      }
+      if (this.elements.quantidadeInput) {
+        this.elements.quantidadeInput.disabled = statusBloqueado;
+      }
+      if (this.elements.btnAdicionarItem) {
+        this.elements.btnAdicionarItem.disabled = statusBloqueado;
+      }
+      if (this.elements.btnSalvarItens) {
+        this.elements.btnSalvarItens.disabled = statusBloqueado;
+      }
+
       // Carregar produtos disponíveis
       await this.carregarProdutos();
 
@@ -2041,6 +2058,12 @@ class OrdemCompraComponentsManager {
 
       // Atualizar tabela de itens
       this.atualizarTabelaItens();
+      
+      // Mostrar mensagem se ordem estiver bloqueada
+      if (statusBloqueado) {
+        const statusTexto = ordem.statusOrdemCompra === 'CONC' ? 'concluída' : 'cancelada';
+        notify.warning(`Esta ordem está ${statusTexto}. Não é possível adicionar ou modificar itens.`);
+      }
 
       // Mostrar modal com nova classe
       this.elements.modalItens.style.display = "flex";
@@ -2520,18 +2543,29 @@ class OrdemCompraComponentsManager {
         throw new Error("ApiManager não disponível");
       }
     } catch (error) {
-      console.error(
-        "[OrdemCompraComponentsManager] Erro ao salvar itens:",
-        error
-      );
 
       let errorMessage = "Erro ao salvar itens da ordem";
-      if (error.message.includes("404")) {
-        errorMessage = "Ordem de compra não encontrada";
-      } else if (error.message.includes("400")) {
-        errorMessage = "Dados dos itens inválidos";
-      } else if (error.message) {
-        errorMessage = error.message;
+      
+      // Extrair mensagem do backend se disponível
+      if (error.message) {
+        // Procurar por mensagens específicas do backend
+        if (error.message.includes("conc") || error.message.toLowerCase().includes("concluída")) {
+          errorMessage = "Não é possível adicionar itens a uma ordem concluída";
+        } else if (error.message.includes("canc") || error.message.toLowerCase().includes("cancelada")) {
+          errorMessage = "Não é possível adicionar itens a uma ordem cancelada";
+        } else if (error.message.includes("404")) {
+          errorMessage = "Ordem de compra não encontrada";
+        } else if (error.message.includes("400")) {
+          // Tentar extrair a mensagem específica do erro 400
+          const match = error.message.match(/HTTP 400:\s*(.+?)(?:\s*-\s*|$)/);
+          if (match && match[1]) {
+            errorMessage = match[1].trim();
+          } else {
+            errorMessage = "Dados dos itens inválidos";
+          }
+        } else {
+          errorMessage = error.message;
+        }
       }
 
       notify.error(errorMessage);
