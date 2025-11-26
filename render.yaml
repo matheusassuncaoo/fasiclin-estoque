@@ -1,0 +1,24 @@
+# render.yaml - Configuração de deploy para Render.com
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: fasiclin-estoque
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USERNAME
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: ORDEM_AUTOMATICA_ENABLED
+        value: "true"
+      - key: ORDEM_AUTOMATICA_DIAS_ENTREGA
+        value: "7"
+    healthCheckPath: /api/health
+    plan: free
+

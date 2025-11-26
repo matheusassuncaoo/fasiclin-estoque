@@ -1,4 +1,8 @@
-# Build stage - Amazon Corretto 24 com Maven instalado manualmente
+# ============================================
+# Dockerfile para Render.com - Java 24
+# ============================================
+
+# Build stage - Amazon Corretto 24 com Maven
 FROM amazoncorretto:24-al2023 AS build
 
 # Instalar Maven
@@ -20,10 +24,10 @@ COPY src ./src
 # Copiar frontend para resources
 COPY frontend ./src/main/resources/frontend
 
-# Build da aplicação (pular testes para build mais rápido)
+# Build da aplicação
 RUN mvn clean package -DskipTests -Dspring.profiles.active=prod
 
-# Runtime stage - Amazon Corretto 24 (mais leve, Alpine)
+# Runtime stage - Amazon Corretto 24 Alpine (mais leve)
 FROM amazoncorretto:24-alpine
 
 WORKDIR /app
@@ -41,12 +45,12 @@ RUN chown spring:spring app.jar
 # Usar usuário não-root
 USER spring:spring
 
-# Expor porta (usar porta do range do Fasitech: 5030-5039)
-EXPOSE 5030
+# Render usa porta 8080 ou variável PORT
+EXPOSE 8080
 
-# Variáveis de ambiente padrão
-ENV SPRING_PROFILES_ACTIVE=fasitech
-ENV SERVER_PORT=5030
+# Variáveis de ambiente para Render
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV SERVER_PORT=8080
 ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=100"
 ENV TZ=America/Sao_Paulo
 
@@ -54,9 +58,9 @@ ENV TZ=America/Sao_Paulo
 ENV ORDEM_AUTOMATICA_ENABLED=true
 ENV ORDEM_AUTOMATICA_DIAS_ENTREGA=7
 
-# Health check melhorado
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:5030/api/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/health || exit 1
 
-# Executar aplicação com configurações otimizadas
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Djava.security.egd=file:/dev/./urandom -jar app.jar"]
+# Executar aplicação - Render passa a porta via variável PORT
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dserver.port=${PORT:-8080} -Djava.security.egd=file:/dev/./urandom -jar app.jar"]
