@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Documentation (não precisa no container)
+README.md
+DEPLOY_RENDER.md
+CHECKLIST_10_10.md
+LICENSE
+
+# Frontend (se não for servir pelo Spring Boot)
+frontend/
+
+# Test files
+src/test/
+
+# Build artifacts temporários
+*.class
+*.jar
+*.war
+*.ear

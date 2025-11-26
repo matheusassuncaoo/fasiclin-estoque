@@ -1,6 +1,7 @@
 /**
  * FilterManager - Gerenciador de Filtros para Ordens de Compra
  * Implementa filtros avançados e ordenação baseados nos endpoints da API
+ * Inclui sanitização de dados e validação de segurança
  */
 class FilterManager {
   constructor(ordemCompraManager) {
@@ -18,6 +19,11 @@ class FilterManager {
     };
     this.searchTerm = "";
     this.searchTimeout = null;
+    
+    // Valores válidos para enums
+    this.validStatuses = ["PEND", "PROC", "CONC", "CANC"];
+    this.validSortFields = ["id", "valor", "dataOrdem", "dataPrev", "statusOrdemCompra"];
+    this.validSortDirections = ["asc", "desc"];
 
     this.init();
   }
@@ -119,12 +125,11 @@ class FilterManager {
     try {
       // Verificar se ApiManager está disponível
       if (!window.apiManager) {
-        console.error("[FilterManager] ApiManager não está disponível");
         return;
       }
 
-      // Coleta os valores dos filtros
-      this.currentFilters = {
+      // Coleta e sanitiza os valores dos filtros
+      const rawFilters = {
         status: document.getElementById("filterStatus")?.value || "",
         valorMin: document.getElementById("filterValorMin")?.value || "",
         valorMax: document.getElementById("filterValorMax")?.value || "",
@@ -132,7 +137,8 @@ class FilterManager {
         dataFim: document.getElementById("filterDataFim")?.value || "",
       };
 
-      console.log("[FilterManager] Aplicando filtros:", this.currentFilters);
+      // Sanitizar todos os valores
+      this.currentFilters = this.sanitizeFilters(rawFilters);
 
       // Valida os filtros
       if (!this.validateFilters()) {
@@ -141,11 +147,96 @@ class FilterManager {
 
       // Aplica os filtros via API
       await this.loadFilteredData();
-
-      console.log("Filtros aplicados com sucesso!");
     } catch (error) {
       console.error("[FilterManager] Erro ao aplicar filtros:", error);
+      if (typeof notify !== 'undefined') {
+        notify.error("Erro ao aplicar filtros. Tente novamente.");
+      }
     }
+  }
+
+  /**
+   * Sanitiza os valores dos filtros para segurança
+   * @param {Object} filters - Filtros a serem sanitizados
+   * @returns {Object} - Filtros sanitizados
+   */
+  sanitizeFilters(filters) {
+    return {
+      status: this.sanitizeEnum(filters.status, this.validStatuses),
+      valorMin: this.sanitizeDecimal(filters.valorMin),
+      valorMax: this.sanitizeDecimal(filters.valorMax),
+      dataInicio: this.sanitizeDate(filters.dataInicio),
+      dataFim: this.sanitizeDate(filters.dataFim),
+    };
+  }
+
+  /**
+   * Sanitiza um valor enum
+   * @param {string} value - Valor a ser validado
+   * @param {Array<string>} allowedValues - Valores permitidos
+   * @returns {string} - Valor validado ou string vazia
+   */
+  sanitizeEnum(value, allowedValues) {
+    if (!value || typeof value !== 'string') return "";
+    const normalized = value.toUpperCase().trim();
+    return allowedValues.includes(normalized) ? normalized : "";
+  }
+
+  /**
+   * Sanitiza um valor decimal
+   * @param {string} value - Valor a ser sanitizado
+   * @returns {string} - Valor decimal válido ou string vazia
+   */
+  sanitizeDecimal(value) {
+    if (!value || value === "") return "";
+    
+    // Remove caracteres não numéricos exceto ponto e vírgula
+    const cleaned = String(value).replace(/[^\d.,]/g, '').replace(',', '.');
+    const num = parseFloat(cleaned);
+    
+    if (isNaN(num) || !isFinite(num) || num < 0) return "";
+    if (num > 999999999) return "999999999"; // Limite máximo razoável
+    
+    return num.toFixed(2);
+  }
+
+  /**
+   * Sanitiza uma data
+   * @param {string} value - Valor a ser sanitizado
+   * @returns {string} - Data no formato YYYY-MM-DD ou string vazia
+   */
+  sanitizeDate(value) {
+    if (!value || value === "") return "";
+    
+    // Verifica se já está no formato correto
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const date = new Date(value);
+      if (!isNaN(date.getTime())) {
+        // Validar que a data não é muito antiga ou futura demais
+        const minDate = new Date('2000-01-01');
+        const maxDate = new Date('2100-12-31');
+        if (date >= minDate && date <= maxDate) {
+          return value;
+        }
+      }
+    }
+    
+    return "";
+  }
+
+  /**
+   * Sanitiza o termo de busca
+   * @param {string} term - Termo de busca
+   * @returns {string} - Termo sanitizado
+   */
+  sanitizeSearchTerm(term) {
+    if (!term || typeof term !== 'string') return "";
+    
+    return term
+      .replace(/<[^>]*>/g, '') // Remove tags HTML
+      .replace(/[<>'";&]/g, '') // Remove caracteres perigosos
+      .trim()
+      .slice(0, 100); // Limita tamanho máximo
   }
 
   /**
@@ -156,13 +247,11 @@ class FilterManager {
 
     // Validação de valores
     if (valorMin && valorMax && parseFloat(valorMin) > parseFloat(valorMax)) {
-      console.error("Valor mínimo não pode ser maior que o valor máximo");
       return false;
     }
 
     // Validação de datas
     if (dataInicio && dataFim && new Date(dataInicio) > new Date(dataFim)) {
-      console.error("❌ Data de início não pode ser posterior à data fim");
       return false;
     }
 
@@ -181,7 +270,6 @@ class FilterManager {
     try {
       // Verificar se o ApiManager está disponível
       if (!window.apiManager) {
-        console.error("[FilterManager] ApiManager não disponível");
         return;
       }
 
@@ -254,7 +342,6 @@ class FilterManager {
         ordensCompra.length
       );
     } catch (error) {
-      console.error("[FilterManager] Erro ao carregar dados filtrados:", error);
       throw error;
     }
   }
@@ -328,6 +415,12 @@ class FilterManager {
    * Manipula a ordenação da tabela
    */
   handleSort(field) {
+    // Validar se o campo é permitido
+    if (!this.validSortFields.includes(field)) {
+      console.warn(`[FilterManager] Campo de ordenação inválido: ${field}`);
+      return;
+    }
+
     // Se é o mesmo campo, inverte a direção
     if (this.currentSort.field === field) {
       this.currentSort.direction =
@@ -337,7 +430,10 @@ class FilterManager {
       this.currentSort.direction = "asc";
     }
 
-    console.log("[FilterManager] Ordenando por:", this.currentSort);
+    // Garantir que a direção é válida
+    if (!this.validSortDirections.includes(this.currentSort.direction)) {
+      this.currentSort.direction = "asc";
+    }
 
     // Atualiza os ícones de ordenação
     this.updateSortIcons();
@@ -415,7 +511,6 @@ class FilterManager {
 
       notify.success("Filtros removidos com sucesso!");
     } catch (error) {
-      console.error("[FilterManager] Erro ao limpar filtros:", error);
       notify.error("Erro ao limpar filtros. Tente novamente.");
     }
   }
@@ -441,8 +536,8 @@ class FilterManager {
       clearTimeout(this.searchTimeout);
     }
 
-    // Atualizar termo de busca
-    this.searchTerm = searchValue.trim();
+    // Sanitizar e atualizar termo de busca
+    this.searchTerm = this.sanitizeSearchTerm(searchValue);
 
     // Mostrar/ocultar botão limpar
     const clearButton = document.getElementById("clearSearch");

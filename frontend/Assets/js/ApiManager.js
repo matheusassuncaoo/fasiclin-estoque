@@ -5,8 +5,8 @@
  */
 class ApiManager {
   constructor() {
-    // Configuração base da API
-    this.baseURL = "http://localhost:8080/api"; // Ajustar conforme configuração do backend
+    // Configuração base da API - detecta ambiente automaticamente
+    this.baseURL = this.detectBaseURL();
     this.defaultHeaders = {
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -15,7 +15,83 @@ class ApiManager {
     // Configurações de timeout e retry
     this.timeout = 30000; // 30 segundos
     this.maxRetries = 3;
-    this.retryDelay = 1000; // 1 segundo
+    this.retryDelay = 1000; // 1 segundo inicial (backoff exponencial)
+    
+    // Status de conectividade
+    this.isOnline = navigator.onLine;
+    this.apiAvailable = true;
+    this.lastHealthCheck = null;
+    
+    // Rate limiting
+    this.requestQueue = new Map();
+    this.maxRequestsPerSecond = 10;
+    
+    // Setup listeners
+    this.setupConnectivityListeners();
+  }
+
+  /**
+   * Detecta a URL base da API automaticamente
+   * Em produção (Render), usa URL relativa; em dev, usa localhost
+   */
+  detectBaseURL() {
+    const hostname = window.location.hostname;
+    
+    // Se estiver no Render ou em produção
+    if (hostname.includes('onrender.com') || hostname.includes('render.com')) {
+      return '/api';
+    }
+    
+    // Se for localhost ou 127.0.0.1, usar porta padrão do backend
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:8080/api';
+    }
+    
+    // Fallback: tentar URL relativa
+    return '/api';
+  }
+
+  /**
+   * Configura listeners de conectividade
+   */
+  setupConnectivityListeners() {
+    window.addEventListener('online', () => {
+      this.isOnline = true;
+      this.checkApiHealth();
+    });
+
+    window.addEventListener('offline', () => {
+      this.isOnline = false;
+      this.apiAvailable = false;
+    });
+    
+    // Health check periódico (a cada 2 minutos)
+    setInterval(() => {
+      if (this.isOnline) {
+        this.checkApiHealth();
+      }
+    }, 120000);
+  }
+
+  /**
+   * Verifica saúde da API
+   */
+  async checkApiHealth() {
+    try {
+      const response = await fetch(`${this.baseURL}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000)
+      });
+      
+      this.apiAvailable = response.ok;
+      this.lastHealthCheck = Date.now();
+      
+      return this.apiAvailable;
+    } catch (error) {
+      this.apiAvailable = false;
+      this.lastHealthCheck = Date.now();
+      return false;
+    }
   }
 
   // Monta header de Basic Auth a partir de login e senha
@@ -30,20 +106,31 @@ class ApiManager {
   }
 
   /**
-   * Método genérico para fazer requisições HTTP
+   * Método genérico para fazer requisições HTTP com cache e fallback
    * @param {string} endpoint - Endpoint da API
    * @param {Object} options - Opções da requisição
-   * @returns {Promise} - Resposta da API
+   * @returns {Promise} - Resposta da API ou cache
    */
   async makeRequest(endpoint, options = {}) {
+    const method = options.method || "GET";
+    const cacheKey = `api_${method}_${endpoint}`;
+    
+    // Para GET: tentar cache primeiro se offline
+    if (method === 'GET' && !this.isOnline && window.cacheManager) {
+      const cached = window.cacheManager.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+    
     const url = `${this.baseURL}${endpoint}`;
     const config = {
-      method: options.method || "GET",
+      method: method,
       headers: {
         ...this.defaultHeaders,
         ...options.headers,
       },
-      cache: 'no-store', // Desabilita cache HTTP
+      cache: 'no-store',
       ...options,
     };
 
@@ -57,7 +144,7 @@ class ApiManager {
 
     let lastError;
 
-    // Implementação de retry
+    // Implementação de retry com backoff exponencial
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
         const controller = new AbortController();
@@ -70,15 +157,16 @@ class ApiManager {
 
         clearTimeout(timeoutId);
 
+        // Marcar API como disponível
+        this.apiAvailable = true;
+
         // Verificar se a resposta é válida
         if (!response.ok) {
-          // Tentar obter mensagem detalhada do backend
           let serverMessage = "";
           try {
             const ct = response.headers.get("content-type");
             if (ct && ct.includes("application/json")) {
               const body = await response.json();
-              // procurar campos comuns de erro
               serverMessage = body?.message || body?.error || JSON.stringify(body);
             } else {
               serverMessage = await response.text();
@@ -90,7 +178,7 @@ class ApiManager {
           throw new Error(`HTTP ${response.status}: ${response.statusText}${msgSuffix}`);
         }
 
-        // Tentar parsear JSON, se não conseguir retornar texto
+        // Parsear resposta
         const contentType = response.headers.get("content-type");
         let data;
 
@@ -100,22 +188,101 @@ class ApiManager {
           data = await response.text();
         }
 
+        // Para GET: salvar no cache
+        if (method === 'GET' && window.cacheManager) {
+          const cacheType = this.getCacheType(endpoint);
+          window.cacheManager.set(cacheKey, data, cacheType);
+        }
+
         return data;
       } catch (error) {
         lastError = error;
 
+        // Marcar API como indisponível se erro de rede
+        if (this.isRetryableError(error)) {
+          this.apiAvailable = false;
+        }
+
         // Se não é a última tentativa e é um erro de rede, aguardar antes de tentar novamente
         if (attempt < this.maxRetries && this.isRetryableError(error)) {
-          await new Promise((resolve) => setTimeout(resolve, this.retryDelay));
-          await this.delay(this.retryDelay * attempt); // Backoff exponencial
+          // Backoff exponencial: 1s, 2s, 4s
+          await this.delay(this.retryDelay * Math.pow(2, attempt - 1));
         } else {
           break;
         }
       }
     }
 
-    // Se chegou aqui, todas as tentativas falharam
+    // Todas tentativas falharam - tentar fallbacks
+    
+    // Para GET: retornar cache mesmo expirado se disponível
+    if (method === 'GET' && window.cacheManager) {
+      const cached = window.cacheManager.get(cacheKey);
+      if (cached) {
+        if (typeof notify !== 'undefined') {
+          notify.warning('API indisponível. Usando dados em cache.');
+        }
+        return cached;
+      }
+    }
+    
+    // Para operações de escrita: enfileirar para sincronização
+    if ((method === 'POST' || method === 'PUT' || method === 'DELETE') && window.offlineQueue) {
+      const queueId = window.offlineQueue.enqueue({
+        method: method,
+        endpoint: endpoint,
+        data: options.body ? JSON.parse(config.body) : null,
+        description: this.getOperationDescription(method, endpoint)
+      });
+      
+      if (typeof notify !== 'undefined') {
+        notify.warning('Operação enfileirada para sincronização quando API retornar');
+      }
+      
+      // Retornar objeto indicando que foi enfileirado
+      return {
+        queued: true,
+        queueId: queueId,
+        message: 'Operação será sincronizada quando conexão for restabelecida'
+      };
+    }
+
+    // Se chegou aqui, todas as tentativas falharam e sem fallback
     throw this.createApiError(lastError, endpoint, config.method);
+  }
+
+  /**
+   * Determina tipo de cache baseado no endpoint
+   */
+  getCacheType(endpoint) {
+    if (endpoint.includes('/ordens-compra')) return 'ordens';
+    if (endpoint.includes('/produtos')) return 'produtos';
+    if (endpoint.includes('/fornecedores')) return 'fornecedores';
+    if (endpoint.includes('/itens')) return 'itens';
+    return 'default';
+  }
+
+  /**
+   * Gera descrição legível da operação
+   */
+  getOperationDescription(method, endpoint) {
+    const parts = endpoint.split('/').filter(p => p);
+    const resource = parts[0] || 'recurso';
+    
+    const descriptions = {
+      'POST': `Criar ${resource}`,
+      'PUT': `Atualizar ${resource}`,
+      'DELETE': `Excluir ${resource}`
+    };
+    
+    return descriptions[method] || `${method} em ${resource}`;
+  }
+
+  /**
+   * Delay helper
+   */
+  delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
@@ -158,6 +325,148 @@ class ApiManager {
    */
   delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  // ============================================
+  // MÉTODOS DE SANITIZAÇÃO E VALIDAÇÃO
+  // ============================================
+
+  /**
+   * Valida e sanitiza um ID numérico
+   * @param {any} id - ID a ser validado
+   * @param {string} fieldName - Nome do campo para mensagem de erro
+   * @returns {number} - ID validado
+   * @throws {Error} - Se ID for inválido
+   */
+  validateId(id, fieldName = 'ID') {
+    if (id === null || id === undefined) {
+      throw new Error(`${fieldName} é obrigatório`);
+    }
+    
+    const numId = parseInt(id, 10);
+    
+    if (isNaN(numId)) {
+      throw new Error(`${fieldName} deve ser um número válido`);
+    }
+    
+    if (numId <= 0) {
+      throw new Error(`${fieldName} deve ser maior que zero`);
+    }
+    
+    if (numId > 2147483647) {
+      throw new Error(`${fieldName} excede o valor máximo permitido`);
+    }
+    
+    return numId;
+  }
+
+  /**
+   * Sanitiza uma string removendo caracteres perigosos
+   * @param {string} value - Valor a ser sanitizado
+   * @returns {string} - Valor sanitizado
+   */
+  sanitizeString(value) {
+    if (typeof value !== 'string') return value;
+    
+    return value
+      .replace(/<[^>]*>/g, '') // Remove tags HTML
+      .replace(/javascript:/gi, '') // Remove javascript:
+      .replace(/on\w+=/gi, '') // Remove event handlers
+      .replace(/data:/gi, '') // Remove data: URIs
+      .trim();
+  }
+
+  /**
+   * Sanitiza um objeto completo
+   * @param {Object} data - Objeto a ser sanitizado
+   * @returns {Object} - Objeto sanitizado
+   */
+  sanitizeInput(data) {
+    if (typeof data !== 'object' || data === null) return data;
+    
+    const sanitized = {};
+    
+    for (const [key, value] of Object.entries(data)) {
+      // Sanitizar a chave também
+      const safeKey = this.sanitizeString(key);
+      
+      if (typeof value === 'string') {
+        sanitized[safeKey] = this.sanitizeString(value);
+      } else if (typeof value === 'number') {
+        sanitized[safeKey] = isNaN(value) || !isFinite(value) ? null : value;
+      } else if (value instanceof Date) {
+        sanitized[safeKey] = value.toISOString().split('T')[0];
+      } else if (Array.isArray(value)) {
+        sanitized[safeKey] = value.map(item => this.sanitizeInput(item));
+      } else if (typeof value === 'object' && value !== null) {
+        sanitized[safeKey] = this.sanitizeInput(value);
+      } else {
+        sanitized[safeKey] = value;
+      }
+    }
+    
+    return sanitized;
+  }
+
+  /**
+   * Sanitiza um valor decimal
+   * @param {any} value - Valor a ser sanitizado
+   * @returns {string|null} - Valor decimal formatado ou null
+   */
+  sanitizeDecimal(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const num = parseFloat(value);
+    return (!isNaN(num) && isFinite(num) && num >= 0) ? num.toFixed(2) : null;
+  }
+
+  /**
+   * Sanitiza uma data
+   * @param {any} value - Valor a ser sanitizado
+   * @returns {string|null} - Data no formato YYYY-MM-DD ou null
+   */
+  sanitizeDateInput(value) {
+    if (!value) return null;
+    
+    // Se já está no formato correto
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return value;
+    }
+    
+    const date = new Date(value);
+    return !isNaN(date.getTime()) ? date.toISOString().split('T')[0] : null;
+  }
+
+  /**
+   * Sanitiza um valor enum
+   * @param {string} value - Valor a ser validado
+   * @param {Array<string>} allowedValues - Valores permitidos
+   * @returns {string|null} - Valor validado ou null
+   */
+  sanitizeEnum(value, allowedValues) {
+    if (!value) return null;
+    const normalized = String(value).toUpperCase().trim();
+    return allowedValues.includes(normalized) ? normalized : null;
+  }
+
+  /**
+   * Verifica rate limiting antes de fazer requisição
+   * @param {string} endpoint - Endpoint da requisição
+   * @throws {Error} - Se exceder limite de requisições
+   */
+  checkRateLimit(endpoint) {
+    const now = Date.now();
+    const key = endpoint.split('?')[0]; // Ignora query params
+    const requests = this.requestQueue.get(key) || [];
+    
+    // Limpar requests antigos (mais de 1 segundo)
+    const recentRequests = requests.filter(t => now - t < 1000);
+    
+    if (recentRequests.length >= this.maxRequestsPerSecond) {
+      throw new Error('Muitas requisições. Por favor, aguarde um momento.');
+    }
+    
+    recentRequests.push(now);
+    this.requestQueue.set(key, recentRequests);
   }
 
   // ============================================
@@ -717,6 +1026,100 @@ class ApiManager {
       // Fallback: retorna todos e o cliente filtra
       return await this.getProdutos();
     } catch (error) {
+      return [];
+    }
+  }
+
+  // ============================================
+  // MÉTODOS PARA ORDENS AUTOMÁTICAS
+  // ============================================
+
+  /**
+   * Obtém estatísticas do sistema de ordens automáticas
+   * @returns {Promise<Object>} - Estatísticas do sistema
+   */
+  async getOrdemAutomaticaStats() {
+    try {
+      return await this.makeRequest("/ordens-automaticas/estatisticas", {
+        method: "GET",
+      });
+    } catch (error) {
+      console.error("[ApiManager] Erro ao buscar estatísticas automáticas:", error);
+      return {
+        servicoAtivo: false,
+        produtosCriticos: 0,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Força verificação manual de produtos para reposição
+   * @returns {Promise<Object>} - Resultado da verificação
+   */
+  async forcarVerificacaoReposicao() {
+    try {
+      return await this.makeRequest("/ordens-automaticas/verificar", {
+        method: "POST",
+      });
+    } catch (error) {
+      console.error("[ApiManager] Erro ao forçar verificação:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtém status do serviço de ordens automáticas
+   * @returns {Promise<Object>} - Status do serviço
+   */
+  async getOrdemAutomaticaStatus() {
+    try {
+      return await this.makeRequest("/ordens-automaticas/status", {
+        method: "GET",
+      });
+    } catch (error) {
+      console.error("[ApiManager] Erro ao buscar status:", error);
+      return {
+        status: "offline",
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Busca produtos com estoque crítico
+   * @returns {Promise<Array>} - Lista de produtos críticos
+   */
+  async getProdutosEstoqueCritico() {
+    try {
+      const resp = await this.makeRequest("/produtos/estoque-critico", {
+        method: "GET",
+      });
+      if (Array.isArray(resp)) return resp;
+      if (resp?.data && Array.isArray(resp.data)) return resp.data;
+      if (resp?.content && Array.isArray(resp.content)) return resp.content;
+      return [];
+    } catch (error) {
+      console.error("[ApiManager] Erro ao buscar produtos críticos:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Busca produtos com estoque baixo
+   * @returns {Promise<Array>} - Lista de produtos com estoque baixo
+   */
+  async getProdutosEstoqueBaixo() {
+    try {
+      const resp = await this.makeRequest("/produtos/estoque-baixo", {
+        method: "GET",
+      });
+      if (Array.isArray(resp)) return resp;
+      if (resp?.data && Array.isArray(resp.data)) return resp.data;
+      if (resp?.content && Array.isArray(resp.content)) return resp.content;
+      return [];
+    } catch (error) {
+      console.error("[ApiManager] Erro ao buscar produtos com estoque baixo:", error);
       return [];
     }
   }
