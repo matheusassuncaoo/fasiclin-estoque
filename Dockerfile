@@ -1,66 +1,44 @@
-# ============================================
-# Dockerfile para Render.com - Java 24
-# ============================================
-
-# Build stage - Amazon Corretto 24 com Maven
-FROM amazoncorretto:24-al2023 AS build
-
-# Instalar Maven
-RUN yum install -y maven && yum clean all
+# Build stage
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
 
 WORKDIR /app
 
-# Copiar arquivos de configuração do Maven primeiro (para cache de layers)
+# Copiar arquivos de configuração do Maven
 COPY pom.xml .
 COPY mvnw .
 COPY .mvn .mvn
 
-# Download dependencies (cached layer)
+# Download dependencies
 RUN mvn dependency:go-offline -B
 
 # Copiar código fonte
 COPY src ./src
 
-# Copiar frontend para resources
-COPY frontend ./src/main/resources/frontend
+# Build da aplicação (pular testes para build mais rápido)
+RUN mvn clean package -DskipTests
 
-# Build da aplicação
-RUN mvn clean package -DskipTests -Dspring.profiles.active=prod
-
-# Runtime stage - Amazon Corretto 24 Alpine (mais leve)
-FROM amazoncorretto:24-alpine
+# Runtime stage
+FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
-# Instalar wget para healthcheck e criar usuário não-root
-RUN apk add --no-cache wget curl && \
-    addgroup -S spring && adduser -S spring -G spring
+# Criar usuário não-root para segurança
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
 
 # Copiar JAR do build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Mudar ownership do jar
-RUN chown spring:spring app.jar
-
-# Usar usuário não-root
-USER spring:spring
-
-# Render usa porta 8080 ou variável PORT
+# Expor porta
 EXPOSE 8080
 
-# Variáveis de ambiente para Render
+# Variáveis de ambiente (serão sobrescritas pelo Render)
 ENV SPRING_PROFILES_ACTIVE=prod
-ENV SERVER_PORT=8080
-ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=100"
-ENV TZ=America/Sao_Paulo
-
-# Configurações de ordem automática
-ENV ORDEM_AUTOMATICA_ENABLED=true
-ENV ORDEM_AUTOMATICA_DIAS_ENTREGA=7
+ENV JAVA_OPTS="-Xmx512m -Xms256m"
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/health || exit 1
 
-# Executar aplicação - Render passa a porta via variável PORT
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dserver.port=${PORT:-8080} -Djava.security.egd=file:/dev/./urandom -jar app.jar"]
+# Executar aplicação
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

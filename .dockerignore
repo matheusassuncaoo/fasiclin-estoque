@@ -41,8 +41,8 @@ DEPLOY_RENDER.md
 CHECKLIST_10_10.md
 LICENSE
 
-# Frontend - NÃO ignorar, precisa copiar para o container
-# frontend/
+# Frontend (se não for servir pelo Spring Boot)
+frontend/
 
 # Test files
 src/test/
